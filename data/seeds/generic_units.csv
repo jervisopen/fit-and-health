@@ -1,0 +1,10 @@
+id,name,volume_ml,weight_g,rank,is_estimated,note
+gen:g,g,,1,10,0,always available
+gen:ml,ml,1,,20,0,needs food density
+gen:tsp,teaspoon,5,,30,0,
+gen:tbsp,tablespoon,15,,31,0,
+gen:small_katori,small katori,100,,40,1,common small steel katori
+gen:katori,katori,150,,41,1,standard steel katori
+gen:bowl,bowl,250,,42,1,
+gen:cup,cup,240,,43,0,INDB Units.xlsx: 1 cup = 240 ml
+gen:glass,glass,250,,44,0,HealthifyMe: 1 Glass (250 ml)

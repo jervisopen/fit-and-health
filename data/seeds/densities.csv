@@ -1,0 +1,11 @@
+pattern,density_g_per_ml,note
+^milk\b|^milk,1.03,liquid milk
+\b(oil|ghee|vanaspati)\b,0.92,edible oils and fats
+\bbutter\b,0.91,
+\bhoney\b,1.42,
+\b(juice|water|tea|coffee|chai|lassi|chaas|buttermilk|shake|smoothie|sharbat|sherbet|soup|rasam|shorba|cooler|drink|lemonade|nimbu pani)\b,1.0,beverages and thin liquids
+\b(dal|daal|dhal|sambar|sambhar|kadhi|curry|gravy|korma|makhani|masala|rajma|chole|chana|kheer|payasam|halwa|raita|curd|dahi|yogurt|yoghurt)\b,1.0,curries dals and semi-solids (approx.)
+\b(rice|pulao|pulav|biryani|khichdi|khichri|poha|upma|dalia|porridge)\b,0.7,cooked rice and grain dishes (approx.)
+\b(flour|atta|maida|besan|sooji|suji|rava|semolina)\b,0.55,flours
+\bsugar\b,0.85,
+\b(salad|sprouts|sabzi|subzi|bhaji|poriyal|thoran)\b,0.5,loose vegetables (approx.)

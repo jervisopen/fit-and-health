@@ -1,0 +1,41 @@
+pattern,unit,weight_g,note
+"^Egg, poultry, (whole|omlet)",piece,50,one hen egg without shell
+"^Egg, poultry, white",piece,33,
+"^Egg, poultry, yolk",piece,17,
+"^Egg, country hen",piece,40,
+"^Egg, duck",piece,70,
+"^Egg, quial",piece,10,
+"^Apple",medium,150,
+"^Banana, ripe",medium,100,edible portion
+"^Orange, pulp",medium,130,edible portion
+"^Guava",medium,100,
+"^Mango, ripe",medium,200,edible portion
+"^Sapota",medium,100,
+"^Custard apple",medium,100,edible portion
+"^Pineapple",slice,80,
+"^Water melon",slice,280,
+"^Papaya, ripe",slice,140,
+"^Pomegranate",cup arils,175,
+"^Grapes",cup,150,
+"^Tomato, ripe",medium,90,
+"^Onion, big",medium,110,
+"^Onion, small",piece,10,
+"^Potato, brown skin, big",medium,150,
+"^Potato, (brown skin, small|red skin)",medium,90,
+"^Sweet potato",medium,130,
+"^Carrot",medium,60,
+"^Cucumber",medium,200,
+"^Dates",piece,8,
+"^Almond",piece,1.2,
+"^Almond",handful,25,
+"^Cashew nut",piece,1.5,
+"^Cashew nut",handful,25,
+"^Walnut",piece,4,shelled kernel
+"^Ground nut",handful,30,
+"^Paneer",piece,25,cube
+"^Chicken, poultry, breast",piece,120,
+"^Chicken, poultry, leg",piece,100,
+"^Chicken, poultry, thigh",piece,90,
+"^Chicken, poultry, wing",piece,35,
+"^Coconut, kernel, fresh",piece,30,
+"^Jaggery",piece,10,small cube

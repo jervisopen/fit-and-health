@@ -1,0 +1,29 @@
+{
+  "name": "ourfitnesspal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted, mobile-first nutrition diary, photo meal logging and intermittent fasting tracker.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "data:fetch": "node data/ingest/fetch.ts",
+    "data:build": "node data/ingest/build-db.ts",
+    "db:migrate": "node apps/server/src/db/migrate.ts",
+    "db:search": "node data/ingest/search-cli.ts",
+    "test": "node --test \"packages/**/*.test.ts\" \"apps/**/*.test.ts\" \"data/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.4",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "read-excel-file": "^5.8.8"
+  }
+}

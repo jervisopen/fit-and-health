@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.log
+.env
+.env.local
+
+# Runtime data (local database, uploaded meal photos)
+var/
+
+# Third-party datasets are downloaded by `npm run data:fetch` and never committed
+data/raw/
+
+# Reverse-engineering evidence and the vendor APK are never committed
+_re/
+*.apk
