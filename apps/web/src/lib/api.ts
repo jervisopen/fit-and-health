@@ -4,6 +4,7 @@ import type {
 } from "../../../../packages/shared/src/api.ts";
 import type { MacroGoals, Profile } from "../../../../packages/shared/src/goals.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
+import type { FastingLogDTO, FastingMode, FastingStatusDTO } from "../../../../packages/shared/src/fasting.ts";
 
 export class ApiError extends Error {
   status: number;
@@ -50,6 +51,17 @@ export const api = {
   deleteLog: (id: string) => request<void>("DELETE", `/logs/${id}`),
   copyMeal: (from: { date: string; mealType: MealTypeCode }, to: { date: string; mealType: MealTypeCode }) =>
     request<FoodLogDTO[]>("POST", "/logs/copy-meal", { from, to }),
+
+  fastingStatus: () => request<FastingStatusDTO>("GET", "/fasting/status"),
+  setFastingPlan: (p: { presetKey: string; mode: FastingMode; fastingHours: number; startsAtMin: number | null; timezone: string }) =>
+    request<FastingStatusDTO>("PUT", "/fasting/plan", p),
+  endFastingPlan: () => request<FastingStatusDTO>("DELETE", "/fasting/plan"),
+  startFast: (startedAt?: number) => request<FastingStatusDTO>("POST", "/fasting/start", { startedAt }),
+  endFast: (b: { endedAt?: number; startedAt?: number }) => request<{ status: FastingStatusDTO; log: FastingLogDTO }>("POST", "/fasting/end", b),
+  fastingHistory: (from: number, to?: number) => request<FastingLogDTO[]>("GET", `/fasting/history${q({ from, to })}`),
+  updateFast: (id: string, b: { startedAt?: number; endedAt?: number; note?: string | null }) =>
+    request<FastingLogDTO>("PATCH", `/fasting/logs/${id}`, b),
+  deleteFast: (id: string) => request<void>("DELETE", `/fasting/logs/${id}`),
 
   settings: (date: string) => request<SettingsDTO>("GET", `/settings${q({ date })}`),
   saveGoals: (goals: MacroGoals, effectiveFrom: string) => request<SettingsDTO>("PUT", "/settings/goals", { ...goals, effectiveFrom }),

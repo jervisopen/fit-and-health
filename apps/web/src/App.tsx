@@ -9,13 +9,14 @@ import { SettingsPage } from "./features/settings/SettingsPage.tsx";
 import { GoalsPage } from "./features/settings/GoalsPage.tsx";
 import { MealsPage } from "./features/settings/MealsPage.tsx";
 import { ComingSoon } from "./features/ComingSoon.tsx";
+import { FastingPage } from "./features/fasting/FastingPage.tsx";
 
 export function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<DiaryPage />} />
-        <Route path="fasting" element={<ComingSoon title="Fasting" module="Module 3" text="Intermittent fasting timer, plans, stages, history and streaks." />} />
+        <Route path="fasting" element={<FastingPage />} />
         <Route path="snap" element={<ComingSoon title="Snap" module="Module 4" text="Photograph your plate, confirm the detected foods and portions, log in one tap." />} />
         <Route path="foods" element={<MyFoodsPage />} />
         <Route path="me" element={<SettingsPage />} />

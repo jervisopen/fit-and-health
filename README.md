@@ -47,6 +47,17 @@ npm start           # http://localhost:8787 serves the API and the app
 Install it from the browser menu ("Add to Home screen") on a phone on the same network.
 Copy `.env.example` to `.env` to change the port or database location.
 
+## Fasting tracker
+
+- **Daily schedule** (e.g. 16:8 from 8 PM): fasts are tracked automatically; start or end any day's
+  fast early, or edit it afterwards. Windows are anchored to your time zone, even if the server runs in UTC.
+- **Start & stop**: a plain timer for irregular fasts.
+- Presets 12:12 → OMAD, stages from 0 h to 48 h+, streaks (consecutive days with a goal-met fast),
+  7-day chart and history.
+- Reminders: the plan sheet offers an `.ics` calendar file with a daily alert 30 min before each fast
+  and one when it ends. A self-hosted PWA can't send notifications while it's closed without a push server.
+- Stage descriptions are general information, not medical advice.
+
 ## Development
 
 ```sh
