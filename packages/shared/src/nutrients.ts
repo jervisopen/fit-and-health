@@ -125,6 +125,14 @@ export function scaleNutrients(per100g: NutrientValues, grams: number): Nutrient
   return out;
 }
 
+/**
+ * Whole kcal for an amount, rounded exactly like a stored log (1 dp, then whole number),
+ * so list previews, the portion sheet and the diary always agree.
+ */
+export function kcalFor(kcalPer100g: number, grams: number): number {
+  return Math.round(round((kcalPer100g * grams) / 100, 1));
+}
+
 export function round(v: number, dp: number): number {
   const m = 10 ** dp;
   return Math.round(v * m) / m;

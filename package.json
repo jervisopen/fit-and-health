@@ -12,12 +12,16 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev:api": "node --watch-path=apps/server/src --watch-path=packages/shared/src apps/server/src/index.ts",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "start": "node apps/server/src/index.ts",
     "data:fetch": "node data/ingest/fetch.ts",
     "data:build": "node data/ingest/build-db.ts",
     "db:migrate": "node apps/server/src/db/migrate.ts",
     "db:search": "node data/ingest/search-cli.ts",
     "test": "node --test \"packages/**/*.test.ts\" \"apps/**/*.test.ts\" \"data/**/*.test.ts\"",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspace=apps/web"
   },
   "devDependencies": {
     "@types/node": "^24.19.4",

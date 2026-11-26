@@ -37,13 +37,26 @@ Data notes:
   resumes from `data/raw/off/cache.jsonl`, and `data:build` uses whatever is cached so far.
 - Household weights we authored ourselves (`data/seeds/`) are marked `is_estimated`.
 
+## Running the app
+
+```sh
+npm run build       # build the PWA into apps/web/dist
+npm start           # http://localhost:8787 serves the API and the app
+```
+
+Install it from the browser menu ("Add to Home screen") on a phone on the same network.
+Copy `.env.example` to `.env` to change the port or database location.
+
 ## Development
 
 ```sh
-npm test            # node:test suites
-npm run typecheck   # tsc --noEmit
+npm run dev:api     # API on :8787, restarts on change
+npm run dev:web     # Vite on :5173, proxies /api to :8787 (set API_PORT to change)
+npm test            # node:test suites (API, search, ingest, shared)
+npm run typecheck   # server + web
 npm run db:migrate  # apply schema migrations to var/app.db
 ```
 
-Layout: `apps/server` (API + DB), `packages/shared` (nutrient registry, meal types),
-`data/ingest` (fetch/build pipeline), `data/seeds` (our own units, densities, synonyms).
+Layout: `apps/server` (Hono API + SQLite), `apps/web` (React PWA), `packages/shared`
+(nutrient registry, meal types, goal calculator, API types), `data/ingest` (fetch/build pipeline),
+`data/seeds` (our own units, densities, synonyms).

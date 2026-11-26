@@ -7,6 +7,7 @@
  */
 import type { DatabaseSync } from "node:sqlite";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
+import { kcalFor } from "../../../../packages/shared/src/nutrients.ts";
 
 export type SearchOptions = { limit?: number; mealType?: MealTypeCode };
 
@@ -173,7 +174,7 @@ export function searchFoods(db: DatabaseSync, query: string, opts: SearchOptions
       kcalPer100g: kcal,
       defaultMeasure: r.m_id ? { id: r.m_id as string, name: r.m_name as string, weightG: weight! } : null,
       defaultQuantity,
-      kcalPerDefault: kcal !== null ? Math.round((kcal * (weight ?? 1) * defaultQuantity) / 100) : null,
+      kcalPerDefault: kcal !== null ? kcalFor(kcal, (weight ?? 1) * defaultQuantity) : null,
       dataQuality: quality,
       score: Math.round(score * 1000) / 1000,
     };

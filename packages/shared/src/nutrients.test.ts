@@ -2,6 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NUTRIENT_KEYS, nutrient, readMapped, scaleNutrients, type NutrientKey } from "./nutrients.ts";
 import { closestMealType } from "./meals.ts";
+import { bmr, goalsFromProfile, macrosFor } from "./goals.ts";
+
+test("goal calculator: Mifflin-St Jeor, activity, deficit, macro split", () => {
+  const p = { sex: "male", age: 30, heightCm: 160, weightKg: 65, activity: "light", goal: "lose" } as const;
+  assert.equal(bmr(p), 1505);
+  // 1505 × 1.375 − 500 = 1569 → 1570; losing weight uses 25/45/30.
+  assert.deepEqual(goalsFromProfile(p), { calories: 1570, protein_g: 98, carbs_g: 177, fat_g: 52, fibre_g: 22 });
+  // Never below the 1,200 kcal floor for women.
+  assert.equal(goalsFromProfile({ ...p, sex: "female", weightKg: 40, activity: "sedentary" }).calories, 1200);
+  assert.deepEqual(macrosFor(2000), { calories: 2000, protein_g: 100, carbs_g: 250, fat_g: 67, fibre_g: 28 });
+});
 
 test("IFCT mapping converts kJ → kcal and g → mg/µg", () => {
   // IFCT 2017 cow milk (L002) as packaged by nodef/ifct2017.

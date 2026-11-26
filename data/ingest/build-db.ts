@@ -9,11 +9,10 @@
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
-import { NUTRIENT_KEYS } from "../../packages/shared/src/nutrients.ts";
 import { openDatabase, transaction, databaseFile } from "../../apps/server/src/db/index.ts";
 import { migrate } from "../../apps/server/src/db/migrate.ts";
+import { writeFoods } from "../../apps/server/src/foods/write.ts";
 import { readCsvObjects } from "./lib/csv.ts";
-import type { FoodRecord } from "./lib/types.ts";
 import { loadIfct } from "./sources/ifct.ts";
 import { loadIndb } from "./sources/indb.ts";
 import { loadOff, OFF_CACHE, OFF_FILE } from "./sources/off.ts";
@@ -31,30 +30,7 @@ export function writeGenericUnits(db: DatabaseSync) {
   }
 }
 
-export function writeFoods(db: DatabaseSync, foods: FoodRecord[]) {
-  const cols = ["id", "source", "source_ref", "name", "brand", "category", "barcode", "is_veg", "rank",
-    "rel_breakfast", "rel_lunch", "rel_snack", "rel_dinner", "default_measure_id", "density_g_per_ml", "image_url",
-    "data_quality", ...NUTRIENT_KEYS];
-  const insFood = db.prepare(`INSERT INTO foods (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`);
-  const insName = db.prepare("INSERT INTO food_names (food_id, name, lang, is_primary) VALUES (?, ?, ?, ?)");
-  const insMeasure = db.prepare(`INSERT INTO food_measures (id, food_id, name, weight_g, volume_ml, rank, is_estimated, source)
-                                 VALUES (?, ?, ?, ?, NULL, ?, ?, ?)`);
-  const barcodes = new Set<string>();
-  for (const f of foods) {
-    // Barcodes are unique; first (highest-priority) record wins.
-    const barcode = f.barcode && !barcodes.has(f.barcode) ? f.barcode : null;
-    if (barcode) barcodes.add(barcode);
-    insFood.run(
-      f.id, f.source, f.sourceRef, f.name, f.brand ?? null, f.category ?? null, barcode,
-      f.isVeg === undefined ? null : Number(f.isVeg), f.rank,
-      f.relevance.breakfast, f.relevance.lunch, f.relevance.snack, f.relevance.dinner,
-      f.defaultMeasureId, f.densityGPerMl ?? null, f.imageUrl ?? null, f.dataQuality ?? null,
-      ...NUTRIENT_KEYS.map((k) => f.nutrients[k] ?? null),
-    );
-    for (const n of f.names) insName.run(f.id, n.name, n.lang, Number(n.isPrimary));
-    for (const m of f.measures) insMeasure.run(m.id, f.id, m.name, m.weightG, m.rank, Number(m.isEstimated), m.source);
-  }
-}
+export { writeFoods };
 
 export function writeSynonyms(db: DatabaseSync) {
   const map: Record<string, string[]> = {};

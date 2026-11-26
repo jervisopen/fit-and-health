@@ -5,5 +5,10 @@
   "type": "module",
   "scripts": {
     "migrate": "node src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.11",
+    "hono": "^4.13.22",
+    "zod": "^4.6.7"
   }
 }
