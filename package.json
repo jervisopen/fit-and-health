@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "description": "Self-hosted, mobile-first nutrition diary, photo meal logging and intermittent fasting tracker.",
+  "description": "Free, local-first nutrition diary, photo meal logging and intermittent fasting tracker.",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -16,7 +16,9 @@
     "dev:api": "node --watch-path=apps/server/src --watch-path=packages/shared/src apps/server/src/index.ts",
     "dev:api:mock": "node --env-file=dev/mock.env --watch-path=apps/server/src --watch-path=packages/shared/src apps/server/src/index.ts",
     "dev:web": "npm run dev --workspace=apps/web",
+    "dev:web:server": "npm run dev --workspace=apps/web -- --mode server",
     "build": "npm run build --workspace=apps/web",
+    "build:server": "npm run build --workspace=apps/web -- --mode server",
     "start": "node apps/server/src/index.ts",
     "data:fetch": "node data/ingest/fetch.ts",
     "data:build": "node data/ingest/build-db.ts",

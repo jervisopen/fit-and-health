@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeDetection, parseDetectionText, VisionConfigError, VisionResponseError, type Detection } from "./types.ts";
-import { visionFromEnv, lazyVision } from "./index.ts";
+import { envVisionConfig, visionFromEnv, lazyVision } from "./index.ts";
 import { AnthropicVision, DEFAULT_ANTHROPIC_MODEL } from "./anthropic.ts";
 import { OpenAICompatibleVision } from "./openai.ts";
 import { GeminiVision } from "./gemini.ts";
@@ -38,15 +38,15 @@ test("normalization clamps model output", () => {
 });
 
 test("provider selection from .env", () => {
-  assert.throws(() => visionFromEnv({}), /VISION_PROVIDER/);
+  assert.throws(() => visionFromEnv({}), /vision model/);
   assert.throws(() => visionFromEnv({ VISION_PROVIDER: "openai", VISION_API_KEY: "k" }), /VISION_MODEL/);
   assert.throws(() => visionFromEnv({ VISION_PROVIDER: "gemini", VISION_MODEL: "m" }), /VISION_API_KEY/);
   assert.throws(() => visionFromEnv({ VISION_PROVIDER: "anthropic" }), VisionConfigError);
   assert.throws(() => visionFromEnv({ VISION_PROVIDER: "bogus" }), /Unknown/);
   assert.equal(visionFromEnv({ VISION_PROVIDER: "anthropic", VISION_API_KEY: "k" }).model, DEFAULT_ANTHROPIC_MODEL);
   assert.equal(visionFromEnv({ VISION_PROVIDER: "mock" }).name, "mock");
-  assert.deepEqual(lazyVision({}).status().configured, false);
-  assert.deepEqual(lazyVision({ VISION_PROVIDER: "mock" }).status(), { configured: true, provider: "mock", model: "mock-thali" });
+  assert.deepEqual(lazyVision(() => envVisionConfig({})).status().configured, false);
+  assert.deepEqual(lazyVision(() => envVisionConfig({ VISION_PROVIDER: "mock" })).status(), { configured: true, provider: "mock", model: "mock-thali" });
 });
 
 type Captured = { url: string; headers: Record<string, string>; body: any };

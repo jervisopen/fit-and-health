@@ -1,5 +1,5 @@
 import { Hono, type Context } from "hono";
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "./db/types.ts";
 import { z } from "zod";
 import { MEAL_CODES, type MealTypeCode } from "../../../packages/shared/src/meals.ts";
 import { NUTRIENT_KEYS } from "../../../packages/shared/src/nutrients.ts";
@@ -17,16 +17,11 @@ import {
 } from "./fasting/repo.ts";
 import { isValidTimeZone } from "../../../packages/shared/src/time.ts";
 import { bodyLimit } from "hono/body-limit";
-import path from "node:path";
-import { REPO_ROOT } from "./db/index.ts";
 import { MAX_IMAGE_BYTES, SnapService } from "./snap/repo.ts";
-import { lazyVision, type LazyVision } from "./snap/vision/index.ts";
+import { appVision, readSavedVisionConfig, saveVisionConfig, type LazyVision } from "./snap/vision/index.ts";
+import { DbBlobStore, type BlobStore } from "./snap/storage.ts";
 import { VisionConfigError } from "./snap/vision/types.ts";
 
-function defaultDataDir(): string {
-  const configured = process.env.DATA_DIR ?? "./var";
-  return path.isAbsolute(configured) ? configured : path.resolve(REPO_ROOT, configured);
-}
 
 // ── Validation ──────────────────────────────────────────────────────────────────────────────
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((s) => !Number.isNaN(Date.parse(`${s}T00:00:00Z`)), "Invalid date");
@@ -81,6 +76,13 @@ const schemas = {
     endedAt: z.number().int().positive().optional(),
     note: z.string().max(500).nullable().optional(),
   }).refine((o) => Object.keys(o).length > 0, "Nothing to update"),
+  visionSettings: z.object({
+    provider: z.enum(["anthropic", "openai", "gemini", "openai_compatible", "mock"]),
+    apiKey: z.string().max(500).optional(),
+    model: z.string().max(100).optional(),
+    baseURL: z.string().max(300).refine((u) => u === "" || /^https?:\/\//.test(u), "Must start with http:// or https://").optional(),
+    effort: z.enum(["", "low", "medium", "high", "xhigh", "max"]).optional(),
+  }),
   snapTrack: z.object({
     date: isoDate,
     mealType,
@@ -121,18 +123,25 @@ export function localToday(): string {
 }
 
 export type AppDeps = {
-  db: DatabaseSync;
+  db: Db;
   offFetcher?: OffFetcher;
   clock?: () => number;
-  /** Vision provider for Snap (defaults to the one configured in .env). */
+  /** Snap vision provider. Defaults to the settings saved in the app, then `env` (VISION_*). */
   vision?: LazyVision;
-  /** Where photos are stored (defaults to DATA_DIR or ./var). */
-  dataDir?: string;
+  /** Environment for vision fallback config (the Node server passes process.env; the browser passes nothing). */
+  env?: Record<string, string | undefined>;
+  /** Running inside a browser (lets the Claude SDK accept the user's own key there). */
+  browser?: boolean;
+  /** Where meal photos are kept (defaults to the database itself). */
+  store?: BlobStore;
+  /** Reported by /api/health so the UI knows how it is running. */
+  mode?: "server" | "local";
 };
 
-export function createApp({ db, offFetcher, clock = Date.now, vision = lazyVision(), dataDir = defaultDataDir() }: AppDeps) {
+export function createApp({ db, offFetcher, clock = Date.now, env = {}, browser = false, mode = "server", vision, store }: AppDeps) {
   const app = new Hono().basePath("/api");
-  const snaps = new SnapService(db, dataDir, vision);
+  const visionProvider = vision ?? appVision(db, env, { browser });
+  const snaps = new SnapService(db, store ?? new DbBlobStore(db), visionProvider);
 
   app.onError((err, c) => {
     if (err instanceof ValidationError) return c.json({ error: err.message }, 400);
@@ -145,7 +154,7 @@ export function createApp({ db, offFetcher, clock = Date.now, vision = lazyVisio
   app.get("/health", (c) => {
     const v = db.prepare("SELECT value FROM meta WHERE key = 'food_db_version'").get() as { value: string } | undefined;
     const foods = (db.prepare("SELECT count(*) AS n FROM foods WHERE deleted_at IS NULL").get() as { n: number }).n;
-    return c.json({ ok: true, foodDbVersion: v?.value ?? null, foods });
+    return c.json({ ok: true, mode, foodDbVersion: v?.value ?? null, foods });
   });
 
   // ── Foods ──
@@ -227,7 +236,25 @@ export function createApp({ db, offFetcher, clock = Date.now, vision = lazyVisio
   app.patch("/fasting/logs/:id", async (c) => c.json(updateFast(db, c.req.param("id"), await body(c, schemas.fastingPatch), clock())));
   app.delete("/fasting/logs/:id", (c) => { deleteFast(db, c.req.param("id")); return c.body(null, 204); });
   // ── Snap ──
-  app.get("/snap/status", (c) => c.json(vision.status()));
+  app.get("/snap/status", (c) => c.json(visionProvider.status()));
+
+  // Snap AI settings. The key is stored in this app's own database and never returned.
+  app.get("/settings/vision", (c) => {
+    const saved = readSavedVisionConfig(db);
+    return c.json({
+      saved: saved ? { provider: saved.provider ?? "", model: saved.model ?? "", baseURL: saved.baseURL ?? "", effort: saved.effort ?? "", hasKey: Boolean(saved.apiKey) } : null,
+      status: visionProvider.status(),
+    });
+  });
+  app.put("/settings/vision", async (c) => {
+    const b = await body(c, schemas.visionSettings);
+    const previous = readSavedVisionConfig(db);
+    // An omitted key keeps the saved one (so the form never has to show it); "" clears it.
+    const apiKey = b.apiKey === undefined ? previous?.apiKey : b.apiKey.trim() || undefined;
+    saveVisionConfig(db, { provider: b.provider, apiKey, model: b.model?.trim() || undefined, baseURL: b.baseURL?.trim() || undefined, effort: b.effort || undefined });
+    return c.json({ status: visionProvider.status() });
+  });
+  app.delete("/settings/vision", (c) => { saveVisionConfig(db, null); return c.json({ status: visionProvider.status() }); });
   app.get("/snap", (c) => c.json(snaps.list(Math.min(Number(c.req.query("limit") ?? 30) || 30, 100))));
   app.post("/snap", bodyLimit({ maxSize: MAX_IMAGE_BYTES + 512 * 1024, onError: (c) => c.json({ error: "Photo is larger than 8 MB" }, 413) }), async (c) => {
     const form = await c.req.parseBody();

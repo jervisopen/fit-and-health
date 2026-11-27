@@ -2,10 +2,7 @@
  * Keyword rules for prepared Indian dishes (INDB has no category, diet or meal fields).
  * These are our own heuristics, used for browsing and search ranking only.
  */
-import path from "node:path";
-import { readCsvObjects } from "./csv.ts";
-
-const SEEDS = path.resolve(import.meta.dirname, "..", "..", "seeds");
+import { seedRows } from "./seeds.ts";
 
 type Rule = { category: string; re: RegExp };
 
@@ -70,7 +67,7 @@ type PatternRow = { re: RegExp; value: number };
 let densityRules: PatternRow[] | undefined;
 /** Density in g/ml from data/seeds/densities.csv, matched against name (and category). */
 export function densityFor(name: string, category = ""): number | undefined {
-  densityRules ??= readCsvObjects(path.join(SEEDS, "densities.csv")).map((r) => ({
+  densityRules ??= seedRows("densities").map((r) => ({
     re: new RegExp(r.pattern!, "i"),
     value: Number(r.density_g_per_ml),
   }));
@@ -81,7 +78,7 @@ export function densityFor(name: string, category = ""): number | undefined {
 let pieceRules: { re: RegExp; unit: string; weightG: number }[] | undefined;
 /** Curated whole-item weights from data/seeds/piece_weights.csv (all matches, in file order). */
 export function pieceWeightsFor(name: string): { unit: string; weightG: number }[] {
-  pieceRules ??= readCsvObjects(path.join(SEEDS, "piece_weights.csv")).map((r) => ({
+  pieceRules ??= seedRows("piece_weights").map((r) => ({
     re: new RegExp(r.pattern!, "i"),
     unit: r.unit!,
     weightG: Number(r.weight_g),

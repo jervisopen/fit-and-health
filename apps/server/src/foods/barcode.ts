@@ -2,10 +2,10 @@
  * Barcode lookup: local database first, then Open Food Facts live (like HealthifyMe's
  * food_from_barcode). Found products are cached as `off:<barcode>` foods.
  */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../db/types.ts";
 import type { FoodDetailDTO } from "../../../../packages/shared/src/api.ts";
 import { offToRecord } from "../../../../data/ingest/sources/off.ts";
-import { transaction } from "../db/index.ts";
+import { transaction } from "../db/types.ts";
 import { findByBarcode, getFoodDetail, ValidationError } from "./repo.ts";
 import { writeFoods } from "./write.ts";
 
@@ -26,7 +26,7 @@ export const fetchFromOpenFoodFacts: OffFetcher = async (code) => {
   return body.status === 1 && body.product ? body.product : null;
 };
 
-export async function lookupBarcode(db: DatabaseSync, code: string, fetcher: OffFetcher = fetchFromOpenFoodFacts): Promise<FoodDetailDTO | null> {
+export async function lookupBarcode(db: Db, code: string, fetcher: OffFetcher = fetchFromOpenFoodFacts): Promise<FoodDetailDTO | null> {
   if (!/^\d{6,14}$/.test(code)) throw new ValidationError("Barcode must be 6–14 digits");
   const local = findByBarcode(db, code);
   if (local) return local;

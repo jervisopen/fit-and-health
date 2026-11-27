@@ -4,6 +4,7 @@ import type { FoodLogDTO, MealDTO } from "../../../../../packages/shared/src/api
 import { Card, cx, IconButton } from "../../components/ui.tsx";
 import { minutesToTime } from "../../lib/dates.ts";
 import { kcal, portion } from "../../lib/format.ts";
+import { ApiImage } from "../../components/ApiImage.tsx";
 
 export function MealCard({ meal, date, onOpenLog, onCopyPrevious }: {
   meal: MealDTO; date: string; onOpenLog: (log: FoodLogDTO) => void; onCopyPrevious: () => void;
@@ -41,7 +42,7 @@ export function MealCard({ meal, date, onOpenLog, onCopyPrevious }: {
             <li key={log.id}>
               <button type="button" onClick={() => onOpenLog(log)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
                 {log.snapImageId && (
-                  <img src={`/api/snap/${log.snapImageId}/image`} alt="" loading="lazy"
+                  <ApiImage src={`/api/snap/${log.snapImageId}/image`} alt="" loading="lazy"
                     className="h-9 w-9 shrink-0 rounded-lg object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                 )}
                 <div className="min-w-0 flex-1">

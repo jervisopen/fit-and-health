@@ -1,5 +1,5 @@
 /** Writing dataset foods (used by the ingest builder and by live barcode lookup). */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../db/types.ts";
 import { NUTRIENT_KEYS, type NutrientValues } from "../../../../packages/shared/src/nutrients.ts";
 
 export type DatasetSource = "ifct" | "indb" | "off";
@@ -37,7 +37,7 @@ export type FoodRecord = {
   defaultMeasureId: string;
 };
 
-export function writeFoods(db: DatabaseSync, foods: FoodRecord[]) {
+export function writeFoods(db: Db, foods: FoodRecord[]) {
   const cols = ["id", "source", "source_ref", "name", "brand", "category", "barcode", "is_veg", "rank",
     "rel_breakfast", "rel_lunch", "rel_snack", "rel_dinner", "default_measure_id", "density_g_per_ml", "image_url",
     "data_quality", ...NUTRIENT_KEYS];

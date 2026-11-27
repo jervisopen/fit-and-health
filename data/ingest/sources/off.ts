@@ -2,13 +2,9 @@
  * Open Food Facts (India subset) packaged foods → FoodRecord.
  * Input: data/raw/off/india_products.json written by fetch.ts.
  */
-import path from "node:path";
-import { existsSync, readFileSync } from "node:fs";
 import { NUTRIENTS, readMapped, round, type NutrientValues } from "../../../packages/shared/src/nutrients.ts";
 import { densityFor, mealRelevance } from "../lib/classify.ts";
 import type { FoodRecord, MeasureRecord } from "../lib/types.ts";
-
-export const OFF_FILE = path.resolve(import.meta.dirname, "..", "..", "raw", "off", "india_products.json");
 
 type OffProduct = {
   code: string;
@@ -112,19 +108,10 @@ export function offToRecord(p: OffProduct, popularity: number): FoodRecord | nul
   };
 }
 
-export const OFF_CACHE = path.resolve(import.meta.dirname, "..", "..", "raw", "off", "cache.jsonl");
+export type { OffProduct };
 
-/** Products from the finished export, or from the resumable fetch cache if a fetch was interrupted. */
-function readOffProducts(): OffProduct[] {
-  if (existsSync(OFF_FILE)) return (JSON.parse(readFileSync(OFF_FILE, "utf8")) as { products: OffProduct[] }).products;
-  if (existsSync(OFF_CACHE)) {
-    return readFileSync(OFF_CACHE, "utf8").split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l) as OffProduct);
-  }
-  return [];
-}
-
-export function loadOff(): FoodRecord[] {
-  const products = readOffProducts();
+/** Products (most popular first) → deduplicated, plausibility-checked food records. */
+export function offRecords(products: OffProduct[]): FoodRecord[] {
   const out: FoodRecord[] = [];
   const seen = new Set<string>();
   products.forEach((p, i) => {

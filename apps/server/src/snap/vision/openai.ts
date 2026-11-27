@@ -4,6 +4,7 @@
  */
 import { DETECTION_JSON_SCHEMA, parseDetectionText, VisionConfigError, VisionResponseError, type VisionImage, type VisionProvider, type VisionResult } from "./types.ts";
 import { SYSTEM_PROMPT, userPrompt } from "./prompt.ts";
+import { toBase64 } from "../../../../../packages/shared/src/bytes.ts";
 
 export class OpenAICompatibleVision implements VisionProvider {
   readonly name: string;
@@ -13,9 +14,9 @@ export class OpenAICompatibleVision implements VisionProvider {
   private strictSchema: boolean;
 
   constructor(opts: { name: "openai" | "openai_compatible"; apiKey?: string; model?: string; baseURL?: string }) {
-    if (!opts.model) throw new VisionConfigError(`Set VISION_MODEL for VISION_PROVIDER=${opts.name}`);
-    if (opts.name === "openai" && !opts.apiKey) throw new VisionConfigError("Set VISION_API_KEY for VISION_PROVIDER=openai");
-    if (opts.name === "openai_compatible" && !opts.baseURL) throw new VisionConfigError("Set VISION_BASE_URL for VISION_PROVIDER=openai_compatible");
+    if (!opts.model) throw new VisionConfigError("Choose a model that accepts images (VISION_MODEL)");
+    if (opts.name === "openai" && !opts.apiKey) throw new VisionConfigError("Add your OpenAI API key (VISION_API_KEY)");
+    if (opts.name === "openai_compatible" && !opts.baseURL) throw new VisionConfigError("Add the base URL of your OpenAI-compatible server (VISION_BASE_URL)");
     this.name = opts.name;
     this.model = opts.model;
     this.apiKey = opts.apiKey ?? "";
@@ -25,7 +26,7 @@ export class OpenAICompatibleVision implements VisionProvider {
   }
 
   async detect(image: VisionImage, hint?: { mealName?: string }): Promise<VisionResult> {
-    const dataUrl = `data:${image.mime};base64,${Buffer.from(image.bytes).toString("base64")}`;
+    const dataUrl = `data:${image.mime};base64,${toBase64(image.bytes)}`;
     const body = {
       model: this.model,
       messages: [

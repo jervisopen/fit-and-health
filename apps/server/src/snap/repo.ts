@@ -3,13 +3,12 @@
  * database, and log the confirmed items. Mirrors the reference flow
  * upload → detect_foods → confirm (snap/track) → review, without its async queue.
  */
-import type { DatabaseSync } from "node:sqlite";
-import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import type { Db } from "../db/types.ts";
+import { latin1, sha256Hex } from "../../../../packages/shared/src/bytes.ts";
+import type { BlobStore } from "./storage.ts";
 import type { FoodLogDTO, SnapDetectionDTO, SnapImageDTO, SnapStatus, SnapTrackBody } from "../../../../packages/shared/src/api.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
-import { transaction } from "../db/index.ts";
+import { newId, transaction } from "../db/types.ts";
 import { foodSummary, getFoodRow, NotFoundError, resolveMeasure, ValidationError } from "../foods/repo.ts";
 import { getLog, insertLog } from "../diary/repo.ts";
 import { matchItem } from "./match.ts";
@@ -22,7 +21,7 @@ export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export function sniffImage(bytes: Uint8Array): VisionImage["mime"] | null {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
-  const head = Buffer.from(bytes.subarray(0, 12)).toString("latin1");
+  const head = latin1(bytes.subarray(0, 12));
   if (head.startsWith("RIFF") && head.slice(8, 12) === "WEBP") return "image/webp";
   return null;
 }
@@ -41,18 +40,14 @@ type DetRow = {
 };
 
 export class SnapService {
-  private db: DatabaseSync;
-  private dataDir: string;
+  private db: Db;
+  private store: BlobStore;
   private vision: { get(): VisionProvider };
 
-  constructor(db: DatabaseSync, dataDir: string, vision: { get(): VisionProvider }) {
+  constructor(db: Db, store: BlobStore, vision: { get(): VisionProvider }) {
     this.db = db;
-    this.dataDir = dataDir;
+    this.store = store;
     this.vision = vision;
-  }
-
-  private absPath(rel: string) {
-    return path.join(this.dataDir, rel);
   }
 
   /** Save the photo, run detection, match foods. Detection failures are stored, not thrown. */
@@ -62,16 +57,17 @@ export class SnapService {
     if (!mime) throw new ValidationError("Upload a JPEG, PNG or WebP photo");
     const provider = this.vision.get(); // throws VisionConfigError before anything is stored
 
-    const id = randomUUID();
+    const id = newId();
     const capturedAt = opts.capturedAt ?? Date.now();
     const month = new Date(capturedAt).toISOString().slice(0, 7);
-    const rel = path.join("snaps", month, `${id}.${EXT[mime]}`);
-    mkdirSync(path.dirname(this.absPath(rel)), { recursive: true });
-    writeFileSync(this.absPath(rel), bytes);
-    const sha = createHash("sha256").update(bytes).digest("hex");
-    this.db.prepare(`INSERT INTO snap_images (id, file_path, sha256, captured_at, meal_type, status, provider, model, mime)
-                     VALUES (?, ?, ?, ?, ?, 'processing', ?, ?, ?)`)
-      .run(id, rel.replace(/\\/g, "/"), sha, Math.floor(capturedAt / 1000), opts.mealType ?? null, provider.name, provider.model, mime);
+    const key = `snaps/${month}/${id}.${EXT[mime]}`;
+    const sha = await sha256Hex(bytes);
+    transaction(this.db, () => {
+      this.store.put(key, bytes);
+      this.db.prepare(`INSERT INTO snap_images (id, file_path, sha256, captured_at, meal_type, status, provider, model, mime)
+                       VALUES (?, ?, ?, ?, ?, 'processing', ?, ?, ?)`)
+        .run(id, key, sha, Math.floor(capturedAt / 1000), opts.mealType ?? null, provider.name, provider.model, mime);
+    });
     await this.detect(id, { bytes, mime }, provider, opts);
     return this.get(id);
   }
@@ -79,7 +75,7 @@ export class SnapService {
   async retry(id: string): Promise<SnapImageDTO> {
     const row = this.row(id);
     if (row.status === "tracked") throw new ValidationError("This photo is already logged");
-    const bytes = new Uint8Array(readFileSync(this.absPath(row.file_path)));
+    const bytes = this.store.get(row.file_path);
     const provider = this.vision.get();
     this.db.prepare("DELETE FROM snap_detections WHERE image_id = ?").run(id);
     this.db.prepare("UPDATE snap_images SET status = 'processing', error = NULL, provider = ?, model = ? WHERE id = ?").run(provider.name, provider.model, id);
@@ -97,7 +93,7 @@ export class SnapService {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         d.items.forEach((item, i) => {
           const m = matchItem(this.db, item, opts.mealType);
-          ins.run(randomUUID(), id, item.name, item.local_name || null, item.portion_unit, m.foodId, item.confidence,
+          ins.run(newId(), id, item.name, item.local_name || null, item.portion_unit, m.foodId, item.confidence,
             item.bbox.x, item.bbox.y, item.bbox.w, item.bbox.h, m.measureId, m.quantity, m.weightG,
             Number(m.foodId !== null && item.confidence >= 0.35), JSON.stringify(m.alternativeIds), i);
         });
@@ -154,9 +150,9 @@ export class SnapService {
     return ids.map(({ id }) => this.get(id));
   }
 
-  image(id: string): { bytes: Buffer; mime: string } {
+  image(id: string): { bytes: Uint8Array; mime: string } {
     const r = this.row(id);
-    return { bytes: readFileSync(this.absPath(r.file_path)), mime: r.mime };
+    return { bytes: this.store.get(r.file_path), mime: r.mime };
   }
 
   /** Log the confirmed items (possibly swapped foods / edited portions) in one transaction. */
@@ -193,7 +189,7 @@ export class SnapService {
     transaction(this.db, () => {
       this.db.prepare("UPDATE food_logs SET snap_image_id = NULL WHERE snap_image_id = ?").run(id);
       this.db.prepare("DELETE FROM snap_images WHERE id = ?").run(id);
+      this.store.remove(r.file_path);
     });
-    rmSync(this.absPath(r.file_path), { force: true });
   }
 }

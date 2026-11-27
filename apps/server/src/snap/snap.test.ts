@@ -1,14 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { openDatabase } from "../db/index.ts";
 import { migrate } from "../db/migrate.ts";
 import { createApp } from "../app.ts";
 import { writeFoods, type FoodRecord } from "../foods/write.ts";
 import { writeGenericUnits, writeSynonyms } from "../../../../data/ingest/build-db.ts";
-import { lazyVision } from "./vision/index.ts";
 import { choosePortion } from "./match.ts";
 import { sniffImage } from "./repo.ts";
 import type { DiaryDayDTO, FoodLogDTO, MeasureDTO, SnapImageDTO } from "../../../../packages/shared/src/api.ts";
@@ -42,8 +38,7 @@ function setup(env: Record<string, string> = { VISION_PROVIDER: "mock" }) {
   writeGenericUnits(db);
   writeSynonyms(db);
   writeFoods(db, FOODS);
-  const dataDir = mkdtempSync(path.join(os.tmpdir(), "snap-test-"));
-  const app = createApp({ db, vision: lazyVision(env), dataDir });
+  const app = createApp({ db, env });
   const call = async <T = unknown>(method: string, url: string, init?: { json?: unknown; form?: FormData }) => {
     const res = await app.request(`/api${url}`, {
       method,
@@ -60,7 +55,7 @@ function setup(env: Record<string, string> = { VISION_PROVIDER: "mock" }) {
     for (const [k, v] of Object.entries(fields)) form.set(k, v);
     return call<SnapImageDTO>("POST", "/snap", { form });
   };
-  return { db, call, upload, dataDir, cleanup: () => rmSync(dataDir, { recursive: true, force: true }) };
+  return { db, call, upload, cleanup: () => {} };
 }
 
 test("image sniffing ignores the claimed type", () => {
@@ -105,7 +100,7 @@ test("matching drops words until something matches, never trusting a fuzzy look-
 });
 
 test("snap flow: upload → detect → match → confirm into the diary", async () => {
-  const { call, upload, dataDir, cleanup } = setup();
+  const { db, call, upload, cleanup } = setup();
   try {
     assert.deepEqual((await call("GET", "/snap/status")).body, { configured: true, provider: "mock", model: "mock-thali" });
     const up = await upload(JPEG, { mealType: "L", mealName: "Lunch" });
@@ -126,7 +121,7 @@ test("snap flow: upload → detect → match → confirm into the diary", async 
     const img = await call<Uint8Array>("GET", snap.imageUrl.replace("/api", ""));
     assert.equal(img.contentType, "image/jpeg");
     assert.deepEqual([...img.body], [...JPEG]);
-    assert.ok(existsSync(path.join(dataDir, "snaps")));
+    assert.equal((db.prepare("SELECT count(*) AS n FROM blobs").get() as { n: number }).n, 1); // photo stored in the database
 
     // Confirm with one portion edited and the rice swapped for chapati.
     const tracked = await call<FoodLogDTO[]>("POST", `/snap/${snap.id}/track`, { json: {
@@ -178,7 +173,7 @@ test("snap validation: not an image, no vision configured, bad track bodies", as
   try {
     const r = await off.upload();
     assert.equal(r.status, 503);
-    assert.match((r.body as unknown as { error: string }).error, /VISION_PROVIDER/);
+    assert.match((r.body as unknown as { error: string }).error, /vision model/);
     assert.equal((await off.call<{ configured: boolean }>("GET", "/snap/status")).body.configured, false);
   } finally {
     off.cleanup();

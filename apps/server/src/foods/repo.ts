@@ -1,11 +1,10 @@
-import type { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
+import type { Db } from "../db/types.ts";
 import { kcalFor, NUTRIENT_KEYS, round, type NutrientValues } from "../../../../packages/shared/src/nutrients.ts";
 import type {
   CustomFoodBody, FoodDetailDTO, FoodSummaryDTO, MeasureDTO, RecentFoodDTO,
 } from "../../../../packages/shared/src/api.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
-import { transaction } from "../db/index.ts";
+import { newId, transaction } from "../db/types.ts";
 
 type FoodRow = Record<string, unknown> & {
   id: string; name: string; brand: string | null; category: string | null; source: string;
@@ -16,7 +15,7 @@ type FoodRow = Record<string, unknown> & {
 export class NotFoundError extends Error {}
 export class ValidationError extends Error {}
 
-export function getFoodRow(db: DatabaseSync, id: string): FoodRow | undefined {
+export function getFoodRow(db: Db, id: string): FoodRow | undefined {
   return db.prepare("SELECT * FROM foods WHERE id = ? AND deleted_at IS NULL").get(id) as FoodRow | undefined;
 }
 
@@ -31,7 +30,7 @@ export function per100g(row: Record<string, unknown>): NutrientValues {
  * Volume units (katori, cup, glass, tsp…) are offered only when the food has a density;
  * a generic unit is hidden when the food already has a unit with the same name.
  */
-export function measuresFor(db: DatabaseSync, food: FoodRow): MeasureDTO[] {
+export function measuresFor(db: Db, food: FoodRow): MeasureDTO[] {
   const own = (db.prepare("SELECT id, name, weight_g, is_estimated FROM food_measures WHERE food_id = ? AND weight_g IS NOT NULL ORDER BY rank")
     .all(food.id) as { id: string; name: string; weight_g: number; is_estimated: number }[])
     .map((m) => ({ id: m.id, name: m.name, weightG: m.weight_g, isEstimated: Boolean(m.is_estimated), kind: "food" as const }));
@@ -47,7 +46,7 @@ export function measuresFor(db: DatabaseSync, food: FoodRow): MeasureDTO[] {
   return [...own, ...generic];
 }
 
-export function resolveMeasure(db: DatabaseSync, food: FoodRow, measureId: string): MeasureDTO {
+export function resolveMeasure(db: Db, food: FoodRow, measureId: string): MeasureDTO {
   const m = measuresFor(db, food).find((x) => x.id === measureId);
   if (!m) throw new ValidationError(`Unit "${measureId}" is not available for ${food.name}`);
   return m;
@@ -73,12 +72,12 @@ function summarize(row: FoodRow, measures?: MeasureDTO[]): FoodSummaryDTO {
   };
 }
 
-export function foodSummary(db: DatabaseSync, id: string): FoodSummaryDTO | null {
+export function foodSummary(db: Db, id: string): FoodSummaryDTO | null {
   const row = getFoodRow(db, id);
   return row ? summarize(row, measuresFor(db, row)) : null;
 }
 
-export function getFoodDetail(db: DatabaseSync, id: string): FoodDetailDTO {
+export function getFoodDetail(db: Db, id: string): FoodDetailDTO {
   const row = getFoodRow(db, id);
   if (!row) throw new NotFoundError(`Food ${id} not found`);
   const measures = measuresFor(db, row);
@@ -94,7 +93,7 @@ export function getFoodDetail(db: DatabaseSync, id: string): FoodDetailDTO {
 }
 
 /** Foods logged recently, same meal slot first, with the unit and quantity used last time. */
-export function recentFoods(db: DatabaseSync, mealType: MealTypeCode | undefined, limit = 20): RecentFoodDTO[] {
+export function recentFoods(db: Db, mealType: MealTypeCode | undefined, limit = 20): RecentFoodDTO[] {
   const rows = db.prepare(`
     SELECT l.food_id AS food_id, count(*) AS times, max(l.created_at) AS last_at,
            sum(CASE WHEN l.meal_type = ? THEN 1 ELSE 0 END) AS same_meal
@@ -123,8 +122,8 @@ function perServingTo100g(body: CustomFoodBody): NutrientValues {
   return out;
 }
 
-export function upsertCustomFood(db: DatabaseSync, body: CustomFoodBody, existingId?: string): FoodDetailDTO {
-  const id = existingId ?? `custom:${randomUUID()}`;
+export function upsertCustomFood(db: Db, body: CustomFoodBody, existingId?: string): FoodDetailDTO {
+  const id = existingId ?? `custom:${newId()}`;
   if (existingId) {
     const row = getFoodRow(db, existingId);
     if (!row || row.source !== "custom") throw new NotFoundError(`Custom food ${existingId} not found`);
@@ -150,13 +149,13 @@ export function upsertCustomFood(db: DatabaseSync, body: CustomFoodBody, existin
   return getFoodDetail(db, id);
 }
 
-export function deleteCustomFood(db: DatabaseSync, id: string) {
+export function deleteCustomFood(db: Db, id: string) {
   const row = getFoodRow(db, id);
   if (!row || row.source !== "custom") throw new NotFoundError(`Custom food ${id} not found`);
   db.prepare("UPDATE foods SET deleted_at = unixepoch() WHERE id = ?").run(id);
 }
 
-export function listCustomFoods(db: DatabaseSync): FoodSummaryDTO[] {
+export function listCustomFoods(db: Db): FoodSummaryDTO[] {
   const rows = db.prepare("SELECT * FROM foods WHERE source = 'custom' AND deleted_at IS NULL ORDER BY name").all() as FoodRow[];
   return rows.map((r) => summarize(r, measuresFor(db, r)));
 }
@@ -165,7 +164,7 @@ export function listCustomFoods(db: DatabaseSync): FoodSummaryDTO[] {
 
 export type OffFetcher = (code: string) => Promise<Record<string, unknown> | null>;
 
-export function findByBarcode(db: DatabaseSync, code: string): FoodDetailDTO | null {
+export function findByBarcode(db: Db, code: string): FoodDetailDTO | null {
   const row = db.prepare("SELECT id FROM foods WHERE barcode = ? AND deleted_at IS NULL").get(code) as { id: string } | undefined;
   return row ? getFoodDetail(db, row.id) : null;
 }

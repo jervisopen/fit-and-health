@@ -1,6 +1,7 @@
 /** Google Gemini adapter (raw HTTP generateContent, JSON response mode). */
 import { DETECTION_JSON_SCHEMA, parseDetectionText, VisionConfigError, VisionResponseError, type VisionImage, type VisionProvider, type VisionResult } from "./types.ts";
 import { SYSTEM_PROMPT, userPrompt } from "./prompt.ts";
+import { toBase64 } from "../../../../../packages/shared/src/bytes.ts";
 
 export class GeminiVision implements VisionProvider {
   readonly name = "gemini";
@@ -9,8 +10,8 @@ export class GeminiVision implements VisionProvider {
   private baseURL: string;
 
   constructor(opts: { apiKey?: string; model?: string; baseURL?: string }) {
-    if (!opts.apiKey) throw new VisionConfigError("Set VISION_API_KEY for VISION_PROVIDER=gemini");
-    if (!opts.model) throw new VisionConfigError("Set VISION_MODEL for VISION_PROVIDER=gemini");
+    if (!opts.apiKey) throw new VisionConfigError("Add your Gemini API key (VISION_API_KEY)");
+    if (!opts.model) throw new VisionConfigError("Choose a Gemini model that accepts images (VISION_MODEL)");
     this.apiKey = opts.apiKey;
     this.model = opts.model;
     this.baseURL = (opts.baseURL ?? "https://generativelanguage.googleapis.com/v1beta").replace(/\/+$/, "");
@@ -25,7 +26,7 @@ export class GeminiVision implements VisionProvider {
         systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\n\nAnswer with JSON matching this schema:\n${JSON.stringify(DETECTION_JSON_SCHEMA)}` }] },
         contents: [{ role: "user", parts: [
           { text: userPrompt(hint?.mealName) },
-          { inline_data: { mime_type: image.mime, data: Buffer.from(image.bytes).toString("base64") } },
+          { inline_data: { mime_type: image.mime, data: toBase64(image.bytes) } },
         ] }],
         generationConfig: { responseMimeType: "application/json" },
       }),

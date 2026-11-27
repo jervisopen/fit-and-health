@@ -5,13 +5,14 @@ import { Camera, Images, ScanBarcode, Sparkles } from "lucide-react";
 import { closestMealType, MEAL_TYPES, type MealTypeCode } from "../../../../../packages/shared/src/meals.ts";
 import { Card, cx, ErrorNote, Spinner } from "../../components/ui.tsx";
 import { api } from "../../lib/api.ts";
+import { ApiImage } from "../../components/ApiImage.tsx";
 import { compressImage } from "../../lib/image.ts";
 import { today } from "../../lib/dates.ts";
 import { BarcodeScanner, barcodeScanSupported } from "./BarcodeScanner.tsx";
 
 const nowMin = () => new Date().getHours() * 60 + new Date().getMinutes();
 
-/** Capture or pick a meal photo; detection runs on the server with the configured vision model. */
+/** Capture or pick a meal photo; detection runs with the vision model chosen in Me → Snap AI. */
 export function SnapPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -57,11 +58,8 @@ export function SnapPage() {
         <Card className="mt-4 space-y-2 p-4">
           <h2 className="flex items-center gap-2 font-semibold"><Sparkles size={18} className="text-food" /> Connect a vision model</h2>
           <p className="text-sm text-ink-2">{status.data.reason}</p>
-          <pre className="overflow-x-auto rounded-lg bg-surface-2 p-3 text-xs leading-relaxed">{`# .env (next to package.json)
-VISION_PROVIDER=anthropic   # or openai, gemini, openai_compatible
-VISION_API_KEY=...
-VISION_MODEL=               # optional for anthropic (claude-opus-5-5)`}</pre>
-          <p className="text-xs text-ink-3">Restart the server after editing .env. Your key stays on the server. To try the flow without a key, use <code>VISION_PROVIDER=mock</code>.</p>
+          <Link to="/me/snap-ai" className="inline-flex h-11 items-center rounded-xl bg-brand px-4 font-semibold text-brand-ink">Set up Snap AI</Link>
+          <p className="text-xs text-ink-3">Use your own key from Anthropic, OpenAI or Google, or try the demo without one.</p>
         </Card>
       )}
 
@@ -121,7 +119,7 @@ VISION_MODEL=               # optional for anthropic (claude-opus-5-5)`}</pre>
         {recent.data?.map((s) => (
           <li key={s.id}>
             <Link to={`/snap/${s.id}`} className="relative block aspect-square overflow-hidden rounded-xl bg-surface-2">
-              <img src={s.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+              <ApiImage src={s.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
               <span className={cx("absolute bottom-1 left-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
                 s.status === "tracked" ? "bg-fast text-fast-ink" : s.status === "failed" || s.status === "no_food" ? "bg-ink/70 text-bg" : "bg-food text-white")}>
                 {s.status === "tracked" ? "Logged" : s.status === "detected" ? `${s.detections.length} found` : s.status === "no_food" ? "No food" : s.status === "failed" ? "Failed" : "…"}

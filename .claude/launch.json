@@ -4,20 +4,52 @@
     {
       "name": "api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:api"],
+      "runtimeArgs": [
+        "run",
+        "dev:api"
+      ],
       "port": 8787
     },
     {
       "name": "api-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:api:mock"],
+      "runtimeArgs": [
+        "run",
+        "dev:api:mock"
+      ],
       "port": 8787
     },
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:web"],
+      "runtimeArgs": [
+        "run",
+        "dev:web"
+      ],
       "port": 5173
+    },
+    {
+      "name": "web-server-mode",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:web:server"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--workspace=apps/web",
+        "--",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
     }
   ]
 }

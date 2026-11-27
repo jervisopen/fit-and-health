@@ -7,6 +7,7 @@ import { MEAL_TYPES, type MealTypeCode } from "../../../../../packages/shared/sr
 import { Button, Card, cx, ErrorNote, IconButton, PageHeader, Spinner } from "../../components/ui.tsx";
 import { useToast } from "../../components/Toast.tsx";
 import { api } from "../../lib/api.ts";
+import { ApiImage } from "../../components/ApiImage.tsx";
 import { toIso } from "../../lib/dates.ts";
 import { kcal, portion as fmtPortion } from "../../lib/format.ts";
 import { keys } from "../../lib/queries.ts";
@@ -116,7 +117,7 @@ export function SnapReviewPage() {
         right={<IconButton label="Delete photo" onClick={remove}><Trash2 size={20} /></IconButton>} />
       <div className="mx-auto max-w-xl space-y-3 px-4">
         <div className="relative overflow-hidden rounded-2xl bg-surface-2">
-          <img src={snap.imageUrl} alt="Your meal" className="block w-full" />
+          <ApiImage src={snap.imageUrl} alt="Your meal" className="block w-full" />
           {numbered.map(({ item }, n) => (
             <button key={item.key} type="button" disabled={tracked} onClick={() => toggle(item.key)}
               aria-label={`${item.selected ? "Remove" : "Include"} item ${n + 1}`}

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 /** RFC 4180 CSV parser (quoted fields, escaped quotes, CRLF). Returns rows of strings. */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -22,9 +20,9 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
-/** Read a CSV file with a header row into objects keyed by header names. */
-export function readCsvObjects(file: string): Record<string, string>[] {
-  const [header, ...rows] = parseCsv(readFileSync(file, "utf8").replace(/^﻿/, ""));
+/** CSV text with a header row → objects keyed by header names. */
+export function csvObjects(text: string): Record<string, string>[] {
+  const [header, ...rows] = parseCsv(text.replace(/^﻿/, ""));
   if (!header) return [];
   return rows.map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ""])));
 }

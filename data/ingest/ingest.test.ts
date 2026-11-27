@@ -4,8 +4,10 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { parseCsv } from "./lib/csv.ts";
 import { classifyDish, densityFor, isVegDish, pieceWeightsFor } from "./lib/classify.ts";
-import { parseLocalNames, loadIfct } from "./sources/ifct.ts";
-import { isSuspectFryingOil, loadIndb, nameVariants, servingWeightG, slashVariants } from "./sources/indb.ts";
+import "./lib/seeds-node.ts";
+import { parseLocalNames } from "./sources/ifct.ts";
+import { isSuspectFryingOil, nameVariants, servingWeightG, slashVariants } from "./sources/indb.ts";
+import { loadIfct, loadIndb } from "./sources/node-loaders.ts";
 import { offToRecord, parsePackGrams } from "./sources/off.ts";
 
 const RAW = path.resolve(import.meta.dirname, "..", "raw");

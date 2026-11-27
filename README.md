@@ -7,8 +7,8 @@ seeing your vitamins and minerals, even a fasting timer can sit behind a paywall
 nudges you toward premium plans and coaches at every turn. Knowing what's on your plate shouldn't
 cost a monthly fee.
 
-fit&health is the free, open-source alternative. You run it yourself, on your own computer or
-server, and it's yours:
+fit&health is the free, open-source alternative. Open the website and start logging: no sign-up,
+no download, and your diary stays on your phone. Prefer your own server? Self-host it instead.
 
 - **Food diary built for Indian food.** Log in katoris, rotis, bowls, glasses and pieces, not just
   grams. Over 1,600 foods out of the box: 1,014 Indian recipes, 542 raw ingredients with names in
@@ -20,10 +20,9 @@ server, and it's yours:
   cost, or nothing at all.
 - **Intermittent fasting.** Daily schedules or a simple timer, metabolic stages, streaks, history
   and calendar reminders.
-- **No ads, no tracking, no account.** Your diary lives in a file on your machine. Nothing is sold,
-  shared or "personalized".
-- **Installs like an app.** Add it to your phone's home screen; it works offline for what you've
-  already loaded.
+- **No ads, no tracking, no account.** Your diary lives on your device, in a real SQLite database
+  inside the browser. Nothing is sold, shared or "personalized". Back it up to a file whenever you like.
+- **Installs like an app.** Add it to your phone's home screen and it works fully offline.
 
 See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design.
 
@@ -31,14 +30,55 @@ fit&health is an independent open-source project. It is not affiliated with or e
 commercial nutrition app, and it ships none of their code or data. Nutrition values come from public
 datasets and are estimates; this is not medical advice.
 
-## Requirements
+## Two ways to run it
 
-- Node.js 24+ (uses the built-in `node:sqlite` with FTS5, and runs `.ts` files directly)
+**1. The website (local-first, the default).** A static site: the whole API runs in your browser, in
+a Web Worker on [SQLite WebAssembly](https://sqlite.org/wasm) stored in the browser's private file
+system (OPFS). On first visit it downloads about 2 MB of public food data straight from the
+datasets' own public copies and builds the food database on the device. Nothing else leaves the
+device except barcode lookups (Open Food Facts) and Snap photos, which go directly to the vision
+provider whose key you entered. Host it for free on any static host (see
+[Deploy the website](#deploy-the-website-free)).
+
+Data lives in one browser on one device. Use **Me → Your data → Back up** for a file you can
+**Restore** on another phone or browser. Backups leave out your Snap AI key. Installing the app to
+the home screen also stops the browser from clearing its storage when space runs low.
+
+**2. Self-hosted server.** The same API on Node.js with `node:sqlite`, for a home server or a
+family that wants one shared diary. Needs Node.js 24+. See [Food database](#food-database) and
+[Running the server](#running-the-server).
+
+## Deploy the website (free)
+
+The site is plain static files (`apps/web/dist`), so any static host works. With
+[Cloudflare Pages](https://pages.cloudflare.com/) (free plan, unlimited bandwidth):
+
+1. Push this repository to GitHub.
+2. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**, then
+   pick the repository.
+3. Build settings:
+   | Setting | Value |
+   |---|---|
+   | Framework preset | None |
+   | Build command | `npm run build` |
+   | Build output directory | `apps/web/dist` |
+   | Production branch | `main` |
+   Node 24 is picked up from `.nvmrc`. If the build uses an older Node, add the environment
+   variable `NODE_VERSION` = `24`.
+4. **Save and Deploy**. The site goes live at `https://<project-name>.pages.dev`, and every push to
+   `main` redeploys it.
+
+A custom domain is optional: **Custom domains** on the Pages project. `apps/web/public/_headers` sets
+security and caching headers. Without a `404.html`, Pages already serves `index.html` for app routes.
+
+To try the production build locally: `npm run build && npm run preview --workspace=apps/web`.
 
 ## Food database
 
-The repository ships **code only**. Every install downloads its own copy of the open datasets
-into `data/raw/` (gitignored), then builds the local database.
+On the website, the food database is built in the browser on first visit (INDB + IFCT 2017;
+packaged foods come from live barcode lookups). For the self-hosted server, the repository ships
+**code only**. Every install downloads its own copy of the open datasets into `data/raw/`
+(gitignored), then builds the local database.
 
 ```sh
 npm install
@@ -63,11 +103,11 @@ Data notes:
   resumes from `data/raw/off/cache.jsonl`, and `data:build` uses whatever is cached so far.
 - Household weights we authored ourselves (`data/seeds/`) are marked `is_estimated`.
 
-## Running the app
+## Running the server
 
 ```sh
-npm run build       # build the PWA into apps/web/dist
-npm start           # http://localhost:8787 serves the API and the app
+npm run build:server   # build the PWA for server mode into apps/web/dist
+npm start              # http://localhost:8787 serves the API and the app
 ```
 
 Install it from the browser menu ("Add to Home screen") on a phone on the same network.
@@ -79,7 +119,10 @@ Photograph a plate → a vision model lists each food with a household portion a
 → each item is matched to the food database → you tick, fix portions or swap foods → one tap logs
 them to the diary (with the photo as a thumbnail).
 
-Configure the model in `.env` (see `.env.example`). The key never leaves the server:
+Choose the model in **Me → Snap AI**: Claude, OpenAI, Gemini, any OpenAI-compatible server, or a
+demo that needs no key. On the website, the key is stored only on your device and photos go straight
+from the browser to that provider. On a self-hosted server it is stored in the server database, or
+you can set it in `.env` instead (see `.env.example`):
 
 | `VISION_PROVIDER` | Needs | Notes |
 |---|---|---|
@@ -89,7 +132,7 @@ Configure the model in `.env` (see `.env.example`). The key never leaves the ser
 | `openai_compatible` | `VISION_BASE_URL`, `VISION_MODEL` | Local models via Ollama, vLLM, LM Studio… |
 | `mock` | nothing | Same sample thali for every photo; `npm run dev:api:mock` uses it. |
 
-Photos are resized in the browser (≈1280 px JPEG) and stored under `DATA_DIR/snaps/`. Each Snap
+Photos are resized in the browser (≈1280 px JPEG) and stored in the app database. Each Snap
 sends one image to the provider you configured, and that provider's pricing and data policy apply.
 On Android Chrome, the Snap tab can also scan barcodes with the camera.
 
@@ -101,20 +144,22 @@ On Android Chrome, the Snap tab can also scan barcodes with the camera.
 - Presets 12:12 → OMAD, stages from 0 h to 48 h+, streaks (consecutive days with a goal-met fast),
   7-day chart and history.
 - Reminders: the plan sheet offers an `.ics` calendar file with a daily alert 30 min before each fast
-  and one when it ends. A self-hosted PWA can't send notifications while it's closed without a push server.
+  and one when it ends. A web app can't send notifications while it's closed without a push server.
 - Stage descriptions are general information, not medical advice.
 
 ## Development
 
 ```sh
-npm run dev:api     # API on :8787, restarts on change
-npm run dev:web     # Vite on :5173, proxies /api to :8787 (set API_PORT to change)
+npm run dev:web          # Vite on :5173, local-first (API in the browser)
+npm run dev:api          # server API on :8787, restarts on change
+npm run dev:web:server   # Vite on :5173 in server mode, proxies /api to :8787 (set API_PORT to change)
 npm test            # node:test suites (API, search, ingest, shared)
 npm run typecheck   # server + web
 npm run db:migrate  # apply schema migrations to var/app.db
 ```
 
-Layout: `apps/server` (Hono API + SQLite), `apps/web` (React PWA), `packages/shared`
+Layout: `apps/server` (Hono API + SQLite, runtime-neutral so it also runs in the browser),
+`apps/web` (React PWA; `src/local/` hosts the API in a Web Worker), `packages/shared`
 (nutrient registry, meal types, goal calculator, API types), `data/ingest` (fetch/build pipeline),
 `data/seeds` (our own units, densities, synonyms).
 
@@ -122,8 +167,9 @@ Layout: `apps/server` (Hono API + SQLite), `apps/web` (React PWA), `packages/sha
 
 The fit&health code is released under the [MIT licence](LICENSE).
 
-The food datasets are not part of this repository and are not covered by it. `npm run data:fetch`
-downloads them onto your machine, where each keeps its own terms (see the table under
+The food datasets are not part of this repository or the website and are not covered by them. The
+website's first-run setup and `npm run data:fetch` download them onto your own device, where each
+keeps its own terms (see the table under
 [Food database](#food-database)): INDB (open access), IFCT 2017 (© ICMR-NIN; the machine-readable
 packaging is AGPL-3.0) and Open Food Facts (ODbL). If you redistribute a built database, follow
 those terms.

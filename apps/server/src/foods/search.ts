@@ -5,7 +5,7 @@
  *
  * score = text match + source prior (foods.rank) + meal-slot relevance + personal frequency
  */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../db/types.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
 import { kcalFor } from "../../../../packages/shared/src/nutrients.ts";
 
@@ -46,8 +46,8 @@ export function normalizeQuery(q: string): string {
     .replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-const synonymCache = new WeakMap<DatabaseSync, Record<string, string[]>>();
-function synonyms(db: DatabaseSync): Record<string, string[]> {
+const synonymCache = new WeakMap<Db, Record<string, string[]>>();
+function synonyms(db: Db): Record<string, string[]> {
   let s = synonymCache.get(db);
   if (!s) {
     const row = db.prepare("SELECT value FROM meta WHERE key = 'search_synonyms'").get() as { value: string } | undefined;
@@ -88,7 +88,7 @@ export function trigramCoverage(query: string, name: string): number {
   return hit / q.size;
 }
 
-function ftsCandidates(db: DatabaseSync, norm: string, syn: Record<string, string[]>): Candidate[] {
+function ftsCandidates(db: Db, norm: string, syn: Record<string, string[]>): Candidate[] {
   const tokens = norm.split(" ").filter(Boolean);
   const expr = buildFtsQuery(tokens, syn);
   if (!expr) return [];
@@ -110,7 +110,7 @@ function ftsCandidates(db: DatabaseSync, norm: string, syn: Record<string, strin
   });
 }
 
-function fuzzyCandidates(db: DatabaseSync, norm: string): Candidate[] {
+function fuzzyCandidates(db: Db, norm: string): Candidate[] {
   const grams = [...trigrams(norm)].map((g) => g.trim()).filter((g) => g.length === 3);
   if (grams.length < 2) return [];
   const expr = [...new Set(grams)].map((g) => `"${g.replace(/"/g, "")}"`).join(" OR ");
@@ -126,7 +126,7 @@ function fuzzyCandidates(db: DatabaseSync, norm: string): Candidate[] {
   return out;
 }
 
-export function searchFoods(db: DatabaseSync, query: string, opts: SearchOptions = {}): FoodSearchResult[] {
+export function searchFoods(db: Db, query: string, opts: SearchOptions = {}): FoodSearchResult[] {
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 100);
   const norm = normalizeQuery(query);
   if (!norm) return [];

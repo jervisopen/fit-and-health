@@ -5,6 +5,7 @@ import type {
 import type { MacroGoals, Profile } from "../../../../packages/shared/src/goals.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
 import type { FastingLogDTO, FastingMode, FastingStatusDTO } from "../../../../packages/shared/src/fasting.ts";
+import { apiFetch } from "./transport.ts";
 
 export class ApiError extends Error {
   status: number;
@@ -14,8 +15,15 @@ export class ApiError extends Error {
   }
 }
 
+export type HealthDTO = { ok: boolean; mode: "server" | "local"; foodDbVersion: string | null; foods: number };
+export type VisionSettingsDTO = {
+  saved: { provider: string; model: string; baseURL: string; effort: string; hasKey: boolean } | null;
+  status: VisionStatusDTO;
+};
+export type VisionSettingsBody = { provider: string; apiKey?: string; model?: string; baseURL?: string; effort?: string };
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await apiFetch(path, {
     method,
     headers: body === undefined ? undefined : { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -72,7 +80,7 @@ export const api = {
     if (meta.mealType) form.set("mealType", meta.mealType);
     if (meta.mealName) form.set("mealName", meta.mealName);
     if (meta.capturedAt) form.set("capturedAt", String(meta.capturedAt));
-    const res = await fetch("/api/snap", { method: "POST", body: form });
+    const res = await apiFetch("/snap", { method: "POST", body: form });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(res.status, (data && data.error) || `Upload failed (${res.status})`);
     return data as SnapImageDTO;
@@ -85,4 +93,16 @@ export const api = {
   saveGoals: (goals: MacroGoals, effectiveFrom: string) => request<SettingsDTO>("PUT", "/settings/goals", { ...goals, effectiveFrom }),
   saveMeals: (meals: MealSettingDTO[], effectiveFrom: string) => request<SettingsDTO>("PUT", "/settings/meals", { meals, effectiveFrom }),
   saveProfile: (p: Profile) => request<SettingsDTO>("PUT", "/settings/profile", p),
+
+  health: () => request<HealthDTO>("GET", "/health"),
+  visionSettings: () => request<VisionSettingsDTO>("GET", "/settings/vision"),
+  saveVisionSettings: (b: VisionSettingsBody) => request<{ status: VisionStatusDTO }>("PUT", "/settings/vision", b),
+  clearVisionSettings: () => request<{ status: VisionStatusDTO }>("DELETE", "/settings/vision"),
+
+  /** Binary responses (photos, calendar file) as a Blob. */
+  blob: async (path: string): Promise<Blob> => {
+    const res = await apiFetch(path);
+    if (!res.ok) throw new ApiError(res.status, `Request failed (${res.status})`);
+    return res.blob();
+  },
 };

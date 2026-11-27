@@ -4,6 +4,7 @@ import type { FastingLogDTO } from "../../../../../packages/shared/src/fasting.t
 import { Button, Card, ErrorNote, IconButton, Sheet, Spinner } from "../../components/ui.tsx";
 import { useToast } from "../../components/Toast.tsx";
 import { api } from "../../lib/api.ts";
+import { downloadFromApi } from "../../components/ApiImage.tsx";
 import { minutesToTime } from "../../lib/dates.ts";
 import { useFastingHistory, useFastingMutation, useFastingStatus, useNow } from "./hooks.ts";
 import { PlanSetup } from "./PlanSetup.tsx";
@@ -70,9 +71,9 @@ export function FastingPage() {
           <PlanSetup plan={plan} onSaved={() => { setSheet(null); toast("Plan updated"); }} />
           <div className="mt-6 space-y-2 border-t border-line pt-4">
             {plan?.mode === "schedule" && (
-              <a href="/api/fasting/plan.ics" download className="flex items-center gap-2 text-sm font-semibold text-brand">
+              <button type="button" onClick={() => void downloadFromApi("/fasting/plan.ics", "fasting-plan.ics")} className="flex items-center gap-2 text-sm font-semibold text-brand">
                 <CalendarPlus size={18} /> Add reminders to your calendar
-              </a>
+              </button>
             )}
             <p className="text-xs text-ink-3">Calendar reminders work without notifications from this app: 30 min before each fast, and when it ends.</p>
             <Button variant="danger" className="-ml-4" onClick={async () => {

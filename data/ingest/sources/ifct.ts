@@ -2,14 +2,13 @@
  * IFCT 2017 raw ingredients → FoodRecord.
  * Input: data/raw/ifct/compositions.csv (nodef/ifct2017 packaging: g per 100 g, energy kJ).
  */
-import path from "node:path";
-import { existsSync } from "node:fs";
 import { NUTRIENTS, readMapped, round, type NutrientValues } from "../../../packages/shared/src/nutrients.ts";
-import { readCsvObjects } from "../lib/csv.ts";
+import { csvObjects } from "../lib/csv.ts";
 import { densityFor, mealRelevance, normalize, pieceWeightsFor } from "../lib/classify.ts";
 import type { FoodNameRecord, FoodRecord, MeasureRecord } from "../lib/types.ts";
 
-const FILE = path.resolve(import.meta.dirname, "..", "..", "raw", "ifct", "compositions.csv");
+/** Where browsers and `data:fetch` download IFCT 2017 from (CORS-enabled). */
+export const IFCT_URL = "https://raw.githubusercontent.com/nodef/ifct2017/main/compositions/index.csv";
 
 // Language prefixes used in the IFCT "lang" column ("H. Atta; Tam. Mulu Godumai maavu; …").
 const LANG: Record<string, string> = {
@@ -32,9 +31,9 @@ export function parseLocalNames(lang: string): FoodNameRecord[] {
   return out;
 }
 
-export function loadIfct(): FoodRecord[] {
-  if (!existsSync(FILE)) throw new Error(`Missing ${FILE}. Run: npm run data:fetch -- ifct`);
-  const rows = readCsvObjects(FILE);
+/** IFCT compositions CSV text → food records. */
+export function ifctRecords(csvText: string): FoodRecord[] {
+  const rows = csvObjects(csvText);
   return rows.map((r) => {
     const code = r.code!;
     const name = r.name!.trim();

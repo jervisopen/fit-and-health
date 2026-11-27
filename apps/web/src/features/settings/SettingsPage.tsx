@@ -1,17 +1,18 @@
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Clock, Database, Target } from "lucide-react";
+import { ChevronRight, Clock, Database, Sparkles, Target } from "lucide-react";
 import { Card, Spinner } from "../../components/ui.tsx";
 import { today, minutesToTime } from "../../lib/dates.ts";
 import { kcal } from "../../lib/format.ts";
 import { useSettings } from "../../lib/queries.ts";
+import { api } from "../../lib/api.ts";
+import { API_MODE } from "../../lib/transport.ts";
+import { DataCard } from "./DataCard.tsx";
 
 export function SettingsPage() {
   const settings = useSettings(today());
-  const health = useQuery({
-    queryKey: ["health"],
-    queryFn: async () => (await fetch("/api/health")).json() as Promise<{ foods: number; foodDbVersion: string | null }>,
-  });
+  const health = useQuery({ queryKey: ["health"], queryFn: api.health });
+  const vision = useQuery({ queryKey: ["snap", "status"], queryFn: api.snapStatus, staleTime: 60_000 });
   const s = settings.data;
   const enabledMeals = s?.meals.filter((m) => m.enabled) ?? [];
 
@@ -25,6 +26,8 @@ export function SettingsPage() {
               : `${kcal(s.goals.calories)} kcal · P ${s.goals.protein_g} g · C ${s.goals.carbs_g} g · F ${s.goals.fat_g} g`} />
           <Row to="/me/meals" icon={<Clock size={20} />} title="Meals"
             detail={enabledMeals.map((m) => `${m.displayName} ${minutesToTime(m.timeMin)}`).join(" · ")} />
+          <Row to="/me/snap-ai" icon={<Sparkles size={20} />} title="Snap AI"
+            detail={!vision.data ? "…" : vision.data.configured ? `${vision.data.provider} · ${vision.data.model}` : "Not set up"} />
         </Card>
       )}
       <Card className="p-4">
@@ -38,6 +41,10 @@ export function SettingsPage() {
           Values are estimates; dishes vary by recipe.
         </p>
       </Card>
+      {API_MODE === "local" && <DataCard foods={health.data?.foods} />}
+      <p className="pb-4 text-center text-xs text-ink-3">
+        fit&amp;health is free and open source (MIT). No account, no ads, no tracking.
+      </p>
     </div>
   );
 }

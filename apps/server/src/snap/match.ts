@@ -2,7 +2,7 @@
  * Turn a detected item ("chapati", 2 × chapati, ~72 g) into a database food plus a portion
  * in one of that food's units, the way the reference app maps RecognizedFood → foodlog.
  */
-import type { DatabaseSync } from "node:sqlite";
+import type { Db } from "../db/types.ts";
 import type { MeasureDTO } from "../../../../packages/shared/src/api.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
 import { round } from "../../../../packages/shared/src/nutrients.ts";
@@ -59,7 +59,7 @@ export function choosePortion(measures: MeasureDTO[], unit: string, quantity: nu
  * Search with the full name; if nothing matches, drop one word at a time and keep the best-scoring
  * variant ("paneer butter masala" → "paneer butter" → "Paneer in butter sauce").
  */
-function bestHits(db: DatabaseSync, name: string, mealType?: MealTypeCode) {
+function bestHits(db: Db, name: string, mealType?: MealTypeCode) {
   const wordHits = (q: string) => searchFoods(db, q, { limit: 6, mealType }).filter((h) => h.matchKind === "words");
   const full = wordHits(name);
   if (full.length) return full;
@@ -78,7 +78,7 @@ function bestHits(db: DatabaseSync, name: string, mealType?: MealTypeCode) {
   return searchFoods(db, name, { limit: 6, mealType });
 }
 
-export function matchItem(db: DatabaseSync, item: DetectedItem, mealType?: MealTypeCode): Match {
+export function matchItem(db: Db, item: DetectedItem, mealType?: MealTypeCode): Match {
   let hits = bestHits(db, item.name, mealType);
   if (!hits.length && item.local_name) hits = bestHits(db, item.local_name, mealType);
   const best = hits[0];

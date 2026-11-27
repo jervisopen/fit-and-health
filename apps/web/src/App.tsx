@@ -8,6 +8,8 @@ import { MyFoodsPage } from "./features/food/MyFoodsPage.tsx";
 import { SettingsPage } from "./features/settings/SettingsPage.tsx";
 import { GoalsPage } from "./features/settings/GoalsPage.tsx";
 import { MealsPage } from "./features/settings/MealsPage.tsx";
+import { SnapAiPage } from "./features/settings/SnapAiPage.tsx";
+import { SetupGate } from "./features/setup/SetupGate.tsx";
 import { ComingSoon } from "./features/ComingSoon.tsx";
 import { FastingPage } from "./features/fasting/FastingPage.tsx";
 import { SnapPage } from "./features/snap/SnapPage.tsx";
@@ -15,6 +17,7 @@ import { SnapReviewPage } from "./features/snap/SnapReviewPage.tsx";
 
 export function App() {
   return (
+    <SetupGate>
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<DiaryPage />} />
@@ -30,7 +33,9 @@ export function App() {
       <Route path="foods/edit/:id" element={<CustomFoodPage />} />
       <Route path="me/goals" element={<GoalsPage />} />
       <Route path="me/meals" element={<MealsPage />} />
+      <Route path="me/snap-ai" element={<SnapAiPage />} />
       <Route path="*" element={<ComingSoon title="Not found" text="This page doesn't exist." />} />
     </Routes>
+    </SetupGate>
   );
 }

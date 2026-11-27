@@ -1,11 +1,10 @@
-import type { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
+import type { Db } from "../db/types.ts";
 import {
   computeStatus, isGoalMet, presetByKey, targetEndFor, windowsBetween,
   type FastingLogDTO, type FastingMode, type FastingPlanDTO, type FastingStatusDTO,
 } from "../../../../packages/shared/src/fasting.ts";
 import { dateInZone, HOUR } from "../../../../packages/shared/src/time.ts";
-import { transaction } from "../db/index.ts";
+import { newId, transaction } from "../db/types.ts";
 import { NotFoundError, ValidationError } from "../foods/repo.ts";
 
 const DAY = 24 * HOUR;
@@ -41,7 +40,7 @@ function toLog(r: LogRow): FastingLogDTO {
 
 // ── Plans ───────────────────────────────────────────────────────────────────────────────────
 
-export function activePlan(db: DatabaseSync): FastingPlanDTO | null {
+export function activePlan(db: Db): FastingPlanDTO | null {
   const r = db.prepare("SELECT * FROM fasting_plans WHERE ended_at IS NULL ORDER BY created_at DESC, rowid DESC LIMIT 1").get() as PlanRow | undefined;
   return r ? toPlan(r) : null;
 }
@@ -49,11 +48,11 @@ export function activePlan(db: DatabaseSync): FastingPlanDTO | null {
 export type PlanInput = { presetKey: string; mode: FastingMode; fastingHours: number; startsAtMin: number | null; timezone: string };
 
 /** Replace the active plan. Auto-tracking for the new schedule starts now. */
-export function setPlan(db: DatabaseSync, input: PlanInput, now: number): FastingPlanDTO {
+export function setPlan(db: Db, input: PlanInput, now: number): FastingPlanDTO {
   if (input.mode === "schedule" && input.startsAtMin === null) throw new ValidationError("A schedule needs a start time");
   const preset = presetByKey(input.presetKey);
   if (preset && preset.fastingHours !== input.fastingHours) throw new ValidationError(`Preset ${input.presetKey} is ${preset.fastingHours} hours`);
-  const id = randomUUID();
+  const id = newId();
   const startsAt = input.mode === "schedule" ? input.startsAtMin : null;
   // Set mid-window (e.g. at 6 AM on a 16:8 from 8 PM)? Track the fast you're already in.
   let trackFrom = now;
@@ -76,7 +75,7 @@ export function setPlan(db: DatabaseSync, input: PlanInput, now: number): Fastin
   return activePlan(db)!;
 }
 
-export function endPlan(db: DatabaseSync, now: number) {
+export function endPlan(db: Db, now: number) {
   db.prepare("UPDATE fasting_plans SET ended_at = ? WHERE ended_at IS NULL").run(s(now));
 }
 
@@ -87,7 +86,7 @@ export function endPlan(db: DatabaseSync, now: number) {
  * (like HealthifyMe, the schedule is assumed kept unless you start or end early),
  * and close schedule fasts started early once their scheduled end passes.
  */
-export function settle(db: DatabaseSync, now: number) {
+export function settle(db: Db, now: number) {
   const since = now - SETTLE_LOOKBACK;
   const plans = (db.prepare("SELECT * FROM fasting_plans WHERE mode = 'schedule' AND (ended_at IS NULL OR ended_at > ?)")
     .all(s(since)) as PlanRow[]).map(toPlan);
@@ -101,7 +100,7 @@ export function settle(db: DatabaseSync, now: number) {
       for (const w of windowsBetween(plan, from, to)) {
         if (w.end > now) continue;
         if (overlapping.get(s(w.end), s(w.start))) continue; // overridden, edited or deleted
-        insert.run(randomUUID(), plan.id, s(w.start), s(w.end), s(w.end), plan.fastingHours);
+        insert.run(newId(), plan.id, s(w.start), s(w.end), s(w.end), plan.fastingHours);
       }
     }
     db.prepare(`UPDATE fasting_logs SET ended_at = target_end_at, is_goal_met = 1
@@ -112,13 +111,13 @@ export function settle(db: DatabaseSync, now: number) {
 
 // ── Reads ───────────────────────────────────────────────────────────────────────────────────
 
-function logsAround(db: DatabaseSync, from: number, to: number, includeDeleted: boolean): FastingLogDTO[] {
+function logsAround(db: Db, from: number, to: number, includeDeleted: boolean): FastingLogDTO[] {
   return (db.prepare(`SELECT * FROM fasting_logs WHERE started_at <= ? AND (ended_at IS NULL OR ended_at >= ?)
                       ${includeDeleted ? "" : "AND deleted_at IS NULL"} ORDER BY started_at`)
     .all(s(to), s(from)) as LogRow[]).map(toLog);
 }
 
-export function getStatus(db: DatabaseSync, now: number): FastingStatusDTO {
+export function getStatus(db: Db, now: number): FastingStatusDTO {
   settle(db, now);
   const plan = activePlan(db);
   const logs = logsAround(db, now - 3 * DAY, now + 3 * DAY, true);
@@ -128,18 +127,18 @@ export function getStatus(db: DatabaseSync, now: number): FastingStatusDTO {
   return { now, ...computeStatus(plan, logs, now) };
 }
 
-export function history(db: DatabaseSync, from: number, to: number, now: number): FastingLogDTO[] {
+export function history(db: Db, from: number, to: number, now: number): FastingLogDTO[] {
   settle(db, now);
   return logsAround(db, from, to, false).filter((l) => l.endedAt !== null).sort((a, b) => b.startedAt - a.startedAt);
 }
 
-function getLogRow(db: DatabaseSync, id: string): LogRow {
+function getLogRow(db: Db, id: string): LogRow {
   const r = db.prepare("SELECT * FROM fasting_logs WHERE id = ? AND deleted_at IS NULL").get(id) as LogRow | undefined;
   if (!r) throw new NotFoundError(`Fast ${id} not found`);
   return r;
 }
 
-function assertNoOverlap(db: DatabaseSync, startedAt: number, endedAt: number | null, exceptId?: string) {
+function assertNoOverlap(db: Db, startedAt: number, endedAt: number | null, exceptId?: string) {
   const clash = db.prepare(`SELECT id FROM fasting_logs WHERE deleted_at IS NULL AND id != ?
                             AND started_at < ? AND (ended_at IS NULL OR ended_at > ?) LIMIT 1`)
     .get(exceptId ?? "", s(endedAt ?? Number.MAX_SAFE_INTEGER), s(startedAt));
@@ -148,7 +147,7 @@ function assertNoOverlap(db: DatabaseSync, startedAt: number, endedAt: number | 
 
 // ── Commands ────────────────────────────────────────────────────────────────────────────────
 
-export function startFast(db: DatabaseSync, startedAt: number, now: number): FastingStatusDTO {
+export function startFast(db: Db, startedAt: number, now: number): FastingStatusDTO {
   if (startedAt > now + 60_000) throw new ValidationError("Start time cannot be in the future");
   const status = getStatus(db, now);
   if (status.state === "fasting") throw new ValidationError("You're already fasting");
@@ -158,11 +157,11 @@ export function startFast(db: DatabaseSync, startedAt: number, now: number): Fas
   const plan = status.plan;
   const targetEndAt = targetEndFor(plan, startedAt);
   db.prepare(`INSERT INTO fasting_logs (id, plan_id, started_at, target_end_at, target_hours, origin) VALUES (?, ?, ?, ?, ?, 'manual')`)
-    .run(randomUUID(), plan?.id ?? null, s(startedAt), s(targetEndAt), Math.round(((targetEndAt - startedAt) / HOUR) * 100) / 100);
+    .run(newId(), plan?.id ?? null, s(startedAt), s(targetEndAt), Math.round(((targetEndAt - startedAt) / HOUR) * 100) / 100);
   return getStatus(db, now);
 }
 
-export function endFast(db: DatabaseSync, input: { endedAt: number; startedAt?: number }, now: number): { status: FastingStatusDTO; log: FastingLogDTO } {
+export function endFast(db: Db, input: { endedAt: number; startedAt?: number }, now: number): { status: FastingStatusDTO; log: FastingLogDTO } {
   if (input.endedAt > now + 60_000) throw new ValidationError("End time cannot be in the future");
   const status = getStatus(db, now);
   if (status.state !== "fasting" || !status.fast) throw new ValidationError("You're not fasting right now");
@@ -177,7 +176,7 @@ export function endFast(db: DatabaseSync, input: { endedAt: number; startedAt?: 
         .run(s(startedAt), s(input.endedAt), Number(goal), id);
     } else {
       // Ending an auto-tracked fast writes it as an override for this window.
-      id = randomUUID();
+      id = newId();
       db.prepare(`INSERT INTO fasting_logs (id, plan_id, started_at, ended_at, target_end_at, target_hours, is_goal_met, origin)
                   VALUES (?, ?, ?, ?, ?, ?, ?, 'manual')`)
         .run(id, status.plan?.id ?? null, s(startedAt), s(input.endedAt), s(status.fast!.targetEndAt),
@@ -187,7 +186,7 @@ export function endFast(db: DatabaseSync, input: { endedAt: number; startedAt?: 
   return { status: getStatus(db, now), log: toLog(getLogRow(db, id!)) };
 }
 
-export function updateFast(db: DatabaseSync, id: string, patch: { startedAt?: number; endedAt?: number; note?: string | null }, now: number): FastingLogDTO {
+export function updateFast(db: Db, id: string, patch: { startedAt?: number; endedAt?: number; note?: string | null }, now: number): FastingLogDTO {
   const row = getLogRow(db, id);
   const startedAt = patch.startedAt ?? row.started_at * 1000;
   const endedAt = patch.endedAt ?? (row.ended_at === null ? null : row.ended_at * 1000);
@@ -201,7 +200,7 @@ export function updateFast(db: DatabaseSync, id: string, patch: { startedAt?: nu
 }
 
 /** Soft delete: the row keeps claiming its window so auto-tracking doesn't bring it back. */
-export function deleteFast(db: DatabaseSync, id: string) {
+export function deleteFast(db: Db, id: string) {
   getLogRow(db, id);
   db.prepare("UPDATE fasting_logs SET deleted_at = unixepoch() WHERE id = ?").run(id);
 }

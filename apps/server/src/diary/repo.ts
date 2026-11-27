@@ -1,28 +1,27 @@
-import type { DatabaseSync } from "node:sqlite";
-import { randomUUID } from "node:crypto";
+import type { Db } from "../db/types.ts";
 import { NUTRIENT_KEYS, round, scaleNutrients, type NutrientValues } from "../../../../packages/shared/src/nutrients.ts";
 import { MEAL_TYPES, type MealTypeCode } from "../../../../packages/shared/src/meals.ts";
 import { DEFAULT_GOALS, type MacroGoals, type Profile } from "../../../../packages/shared/src/goals.ts";
 import type {
   CreateLogBody, DaySummaryDTO, DiaryDayDTO, FoodLogDTO, LogSource, MealSettingDTO, SettingsDTO, UpdateLogBody,
 } from "../../../../packages/shared/src/api.ts";
-import { transaction } from "../db/index.ts";
+import { newId, transaction } from "../db/types.ts";
 import { getFoodRow, NotFoundError, per100g, resolveMeasure, ValidationError } from "../foods/repo.ts";
 
 // ── Settings: goals and meals apply from a date onward; the latest row on or before a date wins ──
 
-export function goalsFor(db: DatabaseSync, date: string): { goals: MacroGoals; isDefault: boolean } {
+export function goalsFor(db: Db, date: string): { goals: MacroGoals; isDefault: boolean } {
   const row = db.prepare(`SELECT calories, protein_g, carbs_g, fat_g, fibre_g FROM goals
                           WHERE effective_from <= ? ORDER BY effective_from DESC LIMIT 1`).get(date) as MacroGoals | undefined;
   return row ? { goals: { ...row }, isDefault: false } : { goals: DEFAULT_GOALS, isDefault: true };
 }
 
-export function setGoals(db: DatabaseSync, goals: MacroGoals, effectiveFrom: string) {
+export function setGoals(db: Db, goals: MacroGoals, effectiveFrom: string) {
   db.prepare(`INSERT OR REPLACE INTO goals (effective_from, calories, protein_g, carbs_g, fat_g, fibre_g)
               VALUES (?, ?, ?, ?, ?, ?)`).run(effectiveFrom, goals.calories, goals.protein_g, goals.carbs_g, goals.fat_g, goals.fibre_g);
 }
 
-export function mealSettingsFor(db: DatabaseSync, date: string): MealSettingDTO[] {
+export function mealSettingsFor(db: Db, date: string): MealSettingDTO[] {
   const latest = db.prepare("SELECT max(effective_from) AS d FROM meal_settings WHERE effective_from <= ?").get(date) as { d: string | null };
   const saved = latest.d
     ? (db.prepare("SELECT * FROM meal_settings WHERE effective_from = ?").all(latest.d) as Record<string, unknown>[])
@@ -36,7 +35,7 @@ export function mealSettingsFor(db: DatabaseSync, date: string): MealSettingDTO[
   });
 }
 
-export function setMealSettings(db: DatabaseSync, meals: MealSettingDTO[], effectiveFrom: string) {
+export function setMealSettings(db: Db, meals: MealSettingDTO[], effectiveFrom: string) {
   const enabled = meals.filter((m) => m.enabled);
   if (!enabled.length) throw new ValidationError("At least one meal must be enabled");
   const total = enabled.reduce((s, m) => s + m.caloriesPct, 0);
@@ -49,16 +48,16 @@ export function setMealSettings(db: DatabaseSync, meals: MealSettingDTO[], effec
   });
 }
 
-export function getProfile(db: DatabaseSync): Profile | null {
+export function getProfile(db: Db): Profile | null {
   const row = db.prepare("SELECT value FROM meta WHERE key = 'profile'").get() as { value: string } | undefined;
   return row ? (JSON.parse(row.value) as Profile) : null;
 }
 
-export function setProfile(db: DatabaseSync, profile: Profile) {
+export function setProfile(db: Db, profile: Profile) {
   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('profile', ?)").run(JSON.stringify(profile));
 }
 
-export function getSettings(db: DatabaseSync, today: string): SettingsDTO {
+export function getSettings(db: Db, today: string): SettingsDTO {
   const { goals, isDefault } = goalsFor(db, today);
   return { goals, goalsAreDefault: isDefault, meals: mealSettingsFor(db, today), profile: getProfile(db) };
 }
@@ -88,24 +87,24 @@ function toLog(r: Record<string, unknown>): FoodLogDTO {
 
 const LOG_SELECT = `SELECT l.*, f.data_quality FROM food_logs l LEFT JOIN foods f ON f.id = l.food_id`;
 
-export function getLog(db: DatabaseSync, id: string): FoodLogDTO {
+export function getLog(db: Db, id: string): FoodLogDTO {
   const r = db.prepare(`${LOG_SELECT} WHERE l.id = ? AND l.deleted_at IS NULL`).get(id) as Record<string, unknown> | undefined;
   if (!r) throw new NotFoundError(`Log ${id} not found`);
   return toLog(r);
 }
 
-function writeNutrients(db: DatabaseSync, id: string, nutrients: NutrientValues) {
+function writeNutrients(db: Db, id: string, nutrients: NutrientValues) {
   const sets = NUTRIENT_KEYS.map((k) => `${k} = ?`).join(", ");
   db.prepare(`UPDATE food_logs SET ${sets} WHERE id = ?`).run(...NUTRIENT_KEYS.map((k) => nutrients[k] ?? null), id);
 }
 
 /** Insert one log (call inside a transaction when creating several). */
-export function insertLog(db: DatabaseSync, body: CreateLogBody & { snapImageId?: string }): string {
+export function insertLog(db: Db, body: CreateLogBody & { snapImageId?: string }): string {
   const food = getFoodRow(db, body.foodId);
   if (!food) throw new NotFoundError(`Food ${body.foodId} not found`);
   const measure = resolveMeasure(db, food, body.measureId);
   const weightG = round(measure.weightG * body.quantity, 2);
-  const id = randomUUID();
+  const id = newId();
   db.prepare(`INSERT INTO food_logs (id, diary_date, meal_type, food_id, food_name, measure_id, measure_name, quantity, weight_g, source, snap_image_id, consumed_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())`)
     .run(id, body.date, body.mealType, food.id, food.name, measure.id, measure.name, body.quantity, weightG, body.source ?? "search", body.snapImageId ?? null);
@@ -113,7 +112,7 @@ export function insertLog(db: DatabaseSync, body: CreateLogBody & { snapImageId?
   return id;
 }
 
-export function createLog(db: DatabaseSync, body: CreateLogBody): FoodLogDTO {
+export function createLog(db: Db, body: CreateLogBody): FoodLogDTO {
   const id = transaction(db, () => insertLog(db, body));
   return getLog(db, id);
 }
@@ -122,7 +121,7 @@ export function createLog(db: DatabaseSync, body: CreateLogBody): FoodLogDTO {
  * Change quantity / unit / meal / date. Nutrients are recomputed from the food when it still exists;
  * if the food was removed, the snapshot is scaled by the weight ratio (unit changes need the food).
  */
-export function updateLog(db: DatabaseSync, id: string, patch: UpdateLogBody): FoodLogDTO {
+export function updateLog(db: Db, id: string, patch: UpdateLogBody): FoodLogDTO {
   const current = getLog(db, id);
   const quantity = patch.quantity ?? current.quantity;
   const food = current.foodId ? getFoodRow(db, current.foodId) : undefined;
@@ -155,23 +154,23 @@ export function updateLog(db: DatabaseSync, id: string, patch: UpdateLogBody): F
   return getLog(db, id);
 }
 
-export function deleteLog(db: DatabaseSync, id: string) {
+export function deleteLog(db: Db, id: string) {
   getLog(db, id);
   db.prepare("UPDATE food_logs SET deleted_at = unixepoch() WHERE id = ?").run(id);
 }
 
 /** Copy every log of one meal to another date (and optionally another meal). */
-export function copyMeal(db: DatabaseSync, from: { date: string; mealType: MealTypeCode }, to: { date: string; mealType: MealTypeCode }): FoodLogDTO[] {
+export function copyMeal(db: Db, from: { date: string; mealType: MealTypeCode }, to: { date: string; mealType: MealTypeCode }): FoodLogDTO[] {
   const rows = db.prepare("SELECT id FROM food_logs WHERE diary_date = ? AND meal_type = ? AND deleted_at IS NULL ORDER BY created_at, rowid")
     .all(from.date, from.mealType) as { id: string }[];
   const cols = ["food_id", "food_name", "measure_id", "measure_name", "quantity", "weight_g", "source", "snap_image_id", ...NUTRIENT_KEYS];
   const created: string[] = [];
   transaction(db, () => {
     for (const { id } of rows) {
-      const newId = randomUUID();
+      const copyId = newId();
       db.prepare(`INSERT INTO food_logs (id, diary_date, meal_type, consumed_at, ${cols.join(",")})
-                  SELECT ?, ?, ?, unixepoch(), ${cols.join(",")} FROM food_logs WHERE id = ?`).run(newId, to.date, to.mealType, id);
-      created.push(newId);
+                  SELECT ?, ?, ?, unixepoch(), ${cols.join(",")} FROM food_logs WHERE id = ?`).run(copyId, to.date, to.mealType, id);
+      created.push(copyId);
     }
   });
   return created.map((id) => getLog(db, id));
@@ -189,7 +188,7 @@ function sumNutrients(logs: FoodLogDTO[]): NutrientValues {
   return out;
 }
 
-export function getDiaryDay(db: DatabaseSync, date: string): DiaryDayDTO {
+export function getDiaryDay(db: Db, date: string): DiaryDayDTO {
   const { goals, isDefault } = goalsFor(db, date);
   const settings = mealSettingsFor(db, date);
   const logs = (db.prepare(`${LOG_SELECT} WHERE l.diary_date = ? AND l.deleted_at IS NULL ORDER BY l.created_at, l.rowid`)
@@ -213,7 +212,7 @@ export function getDiaryDay(db: DatabaseSync, date: string): DiaryDayDTO {
 }
 
 /** Calories per day for the date strip. */
-export function daySummaries(db: DatabaseSync, from: string, to: string): DaySummaryDTO[] {
+export function daySummaries(db: Db, from: string, to: string): DaySummaryDTO[] {
   return db.prepare(`SELECT diary_date AS date, round(coalesce(sum(energy_kcal), 0)) AS kcal, count(*) AS logs
                      FROM food_logs WHERE diary_date BETWEEN ? AND ? AND deleted_at IS NULL
                      GROUP BY diary_date ORDER BY diary_date`).all(from, to) as DaySummaryDTO[];

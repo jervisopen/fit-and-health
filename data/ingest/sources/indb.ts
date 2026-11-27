@@ -3,14 +3,15 @@
  * Every recipe has per-100 g and per-serving values; the serving weight is derived exactly:
  *   weight_g = unit_serving_<n> / <n> × 100   (energy first, then other macros as fallback)
  */
-import path from "node:path";
-import { existsSync } from "node:fs";
-import readXlsxFile from "read-excel-file/node";
 import { NUTRIENTS, readMapped, round, type NutrientValues } from "../../../packages/shared/src/nutrients.ts";
 import { classifyDish, densityFor, isVegDish, mealRelevance, normalize } from "../lib/classify.ts";
 import type { FoodNameRecord, FoodRecord, MeasureRecord } from "../lib/types.ts";
 
-const FILE = path.resolve(import.meta.dirname, "..", "..", "raw", "indb", "Anuvaad_INDB_2024.11.xlsx");
+/**
+ * Where browsers download INDB from: the authors' GitHub copy, identical to Anuvaad_INDB_2024.11.xlsx
+ * (same 1,014 rows and 82 columns; checked 2026-11-27) and, unlike anuvaad.org.in, CORS-enabled.
+ */
+export const INDB_URL = "https://raw.githubusercontent.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-/main/INDB.xlsx";
 
 // Units that duplicate our generic ones or carry no meaning as a serving.
 const SKIP_UNITS = new Set(["ml", "gm", "g", "small"]);
@@ -57,10 +58,10 @@ export function nameVariants(name: string): FoodNameRecord[] {
   return out;
 }
 
-export async function loadIndb(): Promise<FoodRecord[]> {
-  if (!existsSync(FILE)) throw new Error(`Missing ${FILE}. Run: npm run data:fetch -- indb`);
-  const [header, ...rows] = await readXlsxFile(FILE);
-  const cols = header!.map(String);
+/** INDB spreadsheet rows (header first, as read-excel-file returns them) → food records. */
+export function indbRecords(sheet: unknown[][]): FoodRecord[] {
+  const [header, ...rows] = sheet;
+  const cols = (header ?? []).map(String);
   const records: FoodRecord[] = [];
   for (const raw of rows) {
     const r = Object.fromEntries(cols.map((c, i) => [c, raw[i]])) as Record<string, unknown>;
