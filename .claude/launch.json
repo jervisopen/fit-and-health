@@ -50,6 +50,20 @@
         "--strictPort"
       ],
       "port": 4173
+    },
+    {
+      "name": "preview-demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--workspace=apps/web",
+        "--",
+        "--port",
+        "4174",
+        "--strictPort"
+      ],
+      "port": 4174
     }
   ]
 }

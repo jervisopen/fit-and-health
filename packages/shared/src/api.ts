@@ -3,7 +3,7 @@ import type { NutrientValues } from "./nutrients.ts";
 import type { MealTypeCode } from "./meals.ts";
 import type { MacroGoals, Profile } from "./goals.ts";
 
-export type FoodSource = "ifct" | "indb" | "off" | "custom";
+export type FoodSource = "ifct" | "indb" | "off" | "custom" | "usda";
 
 export type MeasureDTO = {
   id: string;

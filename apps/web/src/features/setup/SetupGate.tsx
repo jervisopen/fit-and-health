@@ -52,7 +52,7 @@ export function SetupGate({ children }: { children: ReactNode }) {
       setRecoveryDone(true);
     }} />;
   }
-  if (health.data.foods === 0 && !skip) return <Welcome onSkip={() => {
+  if (!health.data.foodDbVersion && !skip) return <Welcome onSkip={() => {
     try { localStorage.setItem(SKIP_KEY, "1"); } catch { /* private mode */ }
     setSkip(true);
   }} />;
@@ -157,7 +157,7 @@ function Welcome({ onSkip, error: startError }: { onSkip?: () => void; error?: u
         <li className="flex gap-3">
           <Database size={20} className="mt-0.5 shrink-0 text-brand" />
           <span>
-            <b>One-time download: about 2 MB of food data.</b> Indian recipes from INDB and ingredients from IFCT 2017,
+            <b>One-time download: about 2.5 MB of food data.</b> Indian recipes from INDB, ingredients from IFCT 2017 and 7,500+ everyday foods from USDA,
             fetched directly from their public copies and turned into a searchable database on your phone.
           </span>
         </li>

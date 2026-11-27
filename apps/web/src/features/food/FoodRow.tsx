@@ -1,12 +1,12 @@
 import { TriangleAlert } from "lucide-react";
 import type { FoodSummaryDTO } from "../../../../../packages/shared/src/api.ts";
 import { VegMark } from "../../components/ui.tsx";
-import { kcal, portion, SOURCE_LABEL } from "../../lib/format.ts";
+import { kcal, portion, sourceLabel } from "../../lib/format.ts";
 
 export function FoodRow({ food, onSelect, hint }: { food: FoodSummaryDTO; onSelect: () => void; hint?: string }) {
   const m = food.defaultMeasure;
   const serving = m && m.id !== "gen:g" ? portion(food.defaultQuantity, m.name, m.weightG * food.defaultQuantity) : "100 g";
-  const meta = [food.brand, hint ?? SOURCE_LABEL[food.source] ?? food.source].filter(Boolean).join(" · ");
+  const meta = [food.brand, hint ?? sourceLabel(food)].filter(Boolean).join(" · ");
   return (
     <li>
       <button type="button" onClick={onSelect} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">

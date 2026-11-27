@@ -2,7 +2,7 @@
 import type { Db } from "../db/types.ts";
 import { NUTRIENT_KEYS, type NutrientValues } from "../../../../packages/shared/src/nutrients.ts";
 
-export type DatasetSource = "ifct" | "indb" | "off";
+export type DatasetSource = "ifct" | "indb" | "off" | "usda";
 
 export type FoodNameRecord = { name: string; lang: string; isPrimary: boolean };
 
@@ -12,7 +12,7 @@ export type MeasureRecord = {
   weightG: number;
   rank: number;
   isEstimated: boolean;
-  source: "indb" | "off" | "seed";
+  source: "indb" | "off" | "seed" | "usda";
 };
 
 export type FoodRecord = {

@@ -3,6 +3,7 @@
  *   npm start            (after npm run build)
  */
 import "../../../data/ingest/lib/seeds-node.ts";
+import { ensureStaples } from "../../../data/ingest/build-core.ts";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
@@ -17,6 +18,7 @@ loadDotEnv(path.join(REPO_ROOT, ".env"));
 const db = openDatabase();
 const applied = migrate(db);
 if (applied.length) console.log(`Applied migrations: ${applied.join(", ")}`);
+if (ensureStaples(db)) console.log("Added the everyday staples (cooked rice, dal, eggs, milk…)");
 const foodCount = (db.prepare("SELECT count(*) AS n FROM foods").get() as { n: number }).n;
 if (!foodCount) console.warn("! Food database is empty. Run: npm run data:fetch && npm run data:build");
 

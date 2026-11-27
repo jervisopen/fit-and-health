@@ -46,11 +46,11 @@ export function SettingsPage() {
           {health.data?.foodDbVersion && ` · built ${new Date(health.data.foodDbVersion).toLocaleDateString()}`}
         </p>
         <p className="mt-2 text-xs leading-relaxed text-ink-3">
-          Indian recipes: INDB (Anuvaad, 2024). Ingredients: IFCT 2017 (ICMR-NIN). Packaged foods: Open Food Facts (ODbL).
+          Indian recipes: INDB (Anuvaad, 2024). Ingredients: IFCT 2017 (ICMR-NIN). Everyday staples and more foods: USDA FoodData Central (public domain). Packaged foods: Open Food Facts (ODbL).
           Values are estimates; dishes vary by recipe.
         </p>
       </Card>
-      {API_MODE === "local" && <DataCard foods={health.data?.foods} />}
+      {API_MODE === "local" && <DataCard downloaded={!!health.data?.foodDbVersion} />}
       {API_MODE === "local" && <AutoBackupsCard />}
       <p className="pb-4 text-center text-xs text-ink-3">
         fit&amp;health is free and open source (MIT). No account, no ads, no tracking.

@@ -3,7 +3,7 @@ import type { LogSource } from "../../../../../packages/shared/src/api.ts";
 import type { MealTypeCode } from "../../../../../packages/shared/src/meals.ts";
 import { Button, ErrorNote, Sheet, Spinner } from "../../components/ui.tsx";
 import { useCreateLog, useFood } from "../../lib/queries.ts";
-import { SOURCE_LABEL } from "../../lib/format.ts";
+import { sourceLabel } from "../../lib/format.ts";
 import { initialPortion, PortionEditor, type Portion } from "./PortionEditor.tsx";
 
 export type PendingFood = { id: string; source: LogSource; last?: { measureId: string | null; quantity: number } };
@@ -38,7 +38,7 @@ export function AddFoodSheet({ pending, date, mealType, mealName, onClose, onAdd
       {food.data && (
         <>
           <p className="-mt-1 mb-4 text-sm text-ink-3">
-            {[food.data.brand, food.data.category, SOURCE_LABEL[food.data.source]].filter(Boolean).join(" · ")}
+            {[food.data.brand, food.data.category === "Everyday staples" ? null : food.data.category, sourceLabel(food.data)].filter(Boolean).join(" · ")}
           </p>
           {p && <PortionEditor food={food.data} value={p} onChange={setP} />}
         </>

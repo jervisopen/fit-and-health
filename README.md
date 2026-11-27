@@ -11,8 +11,9 @@ fit&health is the free, open-source alternative. Open the website and start logg
 no download, and your diary stays on your phone. Prefer your own server? Self-host it instead.
 
 - **Food diary built for Indian food.** Log in katoris, rotis, bowls, glasses and pieces, not just
-  grams. Over 1,600 foods out of the box: 1,014 Indian recipes, 542 raw ingredients with names in
-  15+ Indian languages, and packaged foods with live barcode lookup.
+  grams. About 9,000 foods: 1,014 Indian recipes, 542 raw ingredients with names in 15+ Indian
+  languages, everyday staples like plain cooked rice, dal, eggs and milk, 7,500+ more foods from
+  USDA, and packaged foods with live barcode lookup.
 - **Every nutrient, unlocked.** Calories, protein, carbs, fat and fibre, plus vitamins and minerals.
   No locked cards, no "upgrade to see this".
 - **Snap your plate.** Photograph a meal and get the foods and portions to confirm. Bring your own
@@ -74,6 +75,7 @@ npm run db:search -- --meal B "poha"
 | [INDB, Anuvaad 2024.11](https://www.anuvaad.org.in/indian-nutrient-databank/) | 1,014 prepared Indian recipes with household servings (bowl, roti, idli, katori…) | Open access, no explicit licence. Cite Vijayakumar et al., *Curr Dev Nutr* 2024 |
 | [IFCT 2017](https://www.nin.res.in/) via [nodef/ifct2017](https://github.com/nodef/ifct2017) | 542 raw ingredients, full micronutrients, names in 15+ Indian languages | Data © ICMR-NIN; packaging AGPL-3.0-or-later |
 | [Open Food Facts](https://world.openfoodfacts.org/) | Packaged foods sold in India, with barcodes | ODbL 1.0 (database), DbCL (contents) |
+| [USDA FoodData Central](https://fdc.nal.usda.gov/), SR Legacy | 50 everyday staples with Indian names and katori/glass measures (cooked rice, plain dal, eggs, milk, curd, fruit…), plus 7,500+ more foods | U.S. government work, public domain; bundled in the repo (`data/seeds/staples.json`, `apps/web/public/data/usda-sr-legacy.json.gz`) |
 
 Data notes:
 - **Deep-fried INDB recipes are flagged** (`data_quality = 'suspect_frying_oil'`, 123 foods). INDB
@@ -83,6 +85,8 @@ Data notes:
 - OFF throttles bulk reads hard (about 6 product reads a minute in practice). `data:fetch -- off`
   resumes from `data/raw/off/cache.jsonl`, and `data:build` uses whatever is cached so far.
 - Household weights we authored ourselves (`data/seeds/`) are marked `is_estimated`.
+- Staples rank first in search ("cooked rice" → plain cooked rice), the Indian datasets next, then
+  the rest of USDA. Regenerate the USDA files with `python data/ingest/usda/convert.py <sr-legacy-csv.zip>`.
 
 ## Running the server
 

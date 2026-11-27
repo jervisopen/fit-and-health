@@ -43,10 +43,23 @@ export function applyMigrations(db: Db, migrations: Migration[]): string[] {
   const applied: string[] = [];
   for (const m of [...migrations].sort((a, b) => a.name.localeCompare(b.name))) {
     if (done.has(m.name)) continue;
-    transaction(db, () => {
-      db.exec(m.sql);
-      db.prepare("INSERT INTO schema_migrations(name) VALUES (?)").run(m.name);
-    });
+    // Table rebuilds (SQLite's documented 12-step ALTER procedure) must run with foreign keys off,
+    // or dropping the old table would cascade-delete rows that reference it. PRAGMA foreign_keys
+    // can't change inside a transaction, so it is switched around it and checked before commit.
+    const fkOff = /^--\s*migrate:foreign-keys-off/m.test(m.sql);
+    const fkWasOn = fkOff && Number((db.prepare("PRAGMA foreign_keys").get() as { foreign_keys: number }).foreign_keys) === 1;
+    if (fkWasOn) db.exec("PRAGMA foreign_keys = OFF");
+    try {
+      transaction(db, () => {
+        db.exec(m.sql);
+        if (fkOff && db.prepare("PRAGMA foreign_key_check").all().length) {
+          throw new Error(`Migration ${m.name} left rows with broken foreign keys`);
+        }
+        db.prepare("INSERT INTO schema_migrations(name) VALUES (?)").run(m.name);
+      });
+    } finally {
+      if (fkWasOn) db.exec("PRAGMA foreign_keys = ON");
+    }
     applied.push(m.name);
   }
   return applied;

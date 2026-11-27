@@ -8,7 +8,7 @@ import { localBackup, localInfo, localRestore } from "../../local/client.ts";
 import { requestPersistence, useFoodSetup } from "../setup/SetupGate.tsx";
 
 /** Local mode: where the data lives, backups, and refreshing the food database. */
-export function DataCard({ foods }: { foods: number | undefined }) {
+export function DataCard({ downloaded }: { downloaded: boolean }) {
   const toast = useToast();
   const setup = useFoodSetup();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -76,7 +76,7 @@ export function DataCard({ foods }: { foods: number | undefined }) {
           <Button variant="secondary" onClick={() => void backup()}><Download size={18} /> Back up</Button>
           <Button variant="secondary" onClick={() => fileInput.current?.click()}><Upload size={18} /> Restore</Button>
           <Button variant="ghost" className="col-span-2" onClick={() => void setup.run().then(() => toast("Food database updated"))}>
-            <RefreshCw size={18} /> {foods ? "Update food database" : "Download food database"}
+            <RefreshCw size={18} /> {downloaded ? "Update food database" : "Download food database"}
           </Button>
         </div>
       )}

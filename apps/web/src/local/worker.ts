@@ -7,20 +7,25 @@
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
 import { applyMigrations } from "../../../server/src/db/types.ts";
 import { createApp } from "../../../server/src/app.ts";
-import { setSeedLoader, type SeedName } from "../../../../data/ingest/lib/seeds.ts";
-import { replaceDatasetFoods } from "../../../../data/ingest/build-core.ts";
+import { setSeedLoader, type SeedFile } from "../../../../data/ingest/lib/seeds.ts";
+import { ensureStaples, replaceDatasetFoods, replaceUsdaFoods, usdaFoodsFrom } from "../../../../data/ingest/build-core.ts";
+import { USDA_BULK_PATH, USDA_LICENCE, type UsdaBulkFile } from "../../../../data/ingest/sources/usda.ts";
 import { IFCT_URL, ifctRecords } from "../../../../data/ingest/sources/ifct.ts";
 import { INDB_URL, indbRecords } from "../../../../data/ingest/sources/indb.ts";
 import genericUnits from "../../../../data/seeds/generic_units.csv?raw";
 import densities from "../../../../data/seeds/densities.csv?raw";
 import pieceWeights from "../../../../data/seeds/piece_weights.csv?raw";
 import synonyms from "../../../../data/seeds/synonyms.csv?raw";
+import staples from "../../../../data/seeds/staples.json?raw";
 import { WasmDb } from "./sqlite-db.ts";
 import type { FromWorker, ToWorker } from "./protocol.ts";
 import { getSnapshot, listSnapshots, putSnapshot, type SnapshotReason } from "./snapshots.ts";
 
-const SEEDS: Record<SeedName, string> = { generic_units: genericUnits, densities, piece_weights: pieceWeights, synonyms };
-setSeedLoader((name) => SEEDS[name]);
+const SEEDS: Record<SeedFile, string> = {
+  "generic_units.csv": genericUnits, "densities.csv": densities, "piece_weights.csv": pieceWeights, "synonyms.csv": synonyms,
+  "staples.json": staples,
+};
+setSeedLoader((file) => SEEDS[file]);
 
 const migrations = Object.entries(
   import.meta.glob("../../../server/src/db/migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>,
@@ -87,6 +92,8 @@ async function host(raw: InstanceType<Sqlite3["oo1"]["DB"]>, persistent: boolean
   const pending = pendingMigrations(db);
   if (persistent && pending > 0 && pending < migrations.length) await snapshot(db, raw, "before-update");
   applyMigrations(db, migrations);
+  // Everyday staples (cooked rice, dal, eggs, milk…) are bundled, so every diary has them.
+  try { ensureStaples(db); } catch (e) { console.warn("Adding staples failed", e); }
   return { db, raw, app: createApp({ db, browser: true, mode: "local" }), persistent };
 }
 
@@ -150,6 +157,32 @@ async function start(): Promise<Host> {
 }
 
 let ready = start();
+
+/** The USDA foods file served with the site. Hosts may or may not decompress the .gz for us. */
+async function fetchUsda(): Promise<UsdaBulkFile> {
+  const res = await fetch(USDA_BULK_PATH);
+  if (!res.ok) throw new Error(`Couldn't download the USDA foods (HTTP ${res.status})`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  const gz = bytes[0] === 0x1f && bytes[1] === 0x8b;
+  const text = gz
+    ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text()
+    : new TextDecoder().decode(bytes);
+  return JSON.parse(text) as UsdaBulkFile;
+}
+
+/** Diaries set up before USDA foods existed get them once, quietly, in the background. */
+async function addUsdaIfMissing() {
+  try {
+    const h = await ready;
+    const meta = (k: string) => (h.db.prepare("SELECT value FROM meta WHERE key = ?").get(k) as { value: string } | undefined)?.value;
+    if (!meta("food_db_version") || meta("usda_version")) return;
+    const n = replaceUsdaFoods(h.db, await fetchUsda());
+    console.info(`Added ${n} USDA foods`);
+  } catch (e) {
+    console.warn("Adding USDA foods failed; will retry next time", e);
+  }
+}
+setTimeout(() => void addUsdaIfMissing(), 5_000);
 
 /** One snapshot a day while the app is open (checked soon after start and every 30 minutes). */
 const DAY_GAP = 20 * 3_600_000;
@@ -226,11 +259,15 @@ async function setupFoods(id: number, host: Host) {
   const { default: readXlsxFile } = await import("read-excel-file/web-worker");
   const indb = indbRecords(await readXlsxFile(indbBytes));
   const ifct = ifctRecords(ifctText);
-  progress("Building your food database…", 80);
+  progress("Adding more everyday foods (USDA)…", 72);
+  // Optional: if this one fails (offline, blocked), the Indian datasets still go in.
+  const usda = await fetchUsda().then(usdaFoodsFrom, (e) => { console.warn("USDA foods skipped", e); return undefined; });
+  progress("Building your food database…", 82);
   const fetchedAt = new Date().toISOString();
-  const counts = replaceDatasetFoods(host.db, { indb, ifct, off: [] }, {
+  const counts = replaceDatasetFoods(host.db, { indb, ifct, off: [], usda }, {
     indb: { url: INDB_URL, fetchedAt, licence: "INDB (Vijayakumar et al. 2024), open access" },
     ifct: { url: IFCT_URL, fetchedAt, licence: "IFCT 2017 © ICMR-NIN; packaging by nodef/ifct2017 (AGPL-3.0)" },
+    ...(usda ? { usda: { url: USDA_BULK_PATH, fetchedAt, licence: USDA_LICENCE } } : {}),
   });
   progress("Done", 100);
   return counts;

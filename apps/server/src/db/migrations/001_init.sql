@@ -68,7 +68,7 @@ CREATE TRIGGER food_names_au AFTER UPDATE ON food_names BEGIN
   INSERT INTO food_names_tri(rowid, name) VALUES (new.id, new.name);
 END;
 
--- Serving units (≈ foodmeasuretoweightmaps). food_id NULL = generic unit usable by any food
+-- Serving units. food_id NULL = generic unit usable by any food
 -- (g always; ml/tsp/cup/katori… only when the food has a density).
 CREATE TABLE food_measures (
   id            TEXT PRIMARY KEY,

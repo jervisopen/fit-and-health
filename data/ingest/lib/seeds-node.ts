@@ -4,4 +4,4 @@ import path from "node:path";
 import { setSeedLoader } from "./seeds.ts";
 
 const SEEDS = path.resolve(import.meta.dirname, "..", "..", "seeds");
-setSeedLoader((name) => readFileSync(path.join(SEEDS, `${name}.csv`), "utf8"));
+setSeedLoader((file) => readFileSync(path.join(SEEDS, file), "utf8"));

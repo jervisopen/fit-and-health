@@ -16,3 +16,6 @@ _re/
 
 # Design notes kept on this computer only
 docs/BLUEPRINT.md
+
+# Reddit post images (local only)
+reddit/

@@ -39,4 +39,10 @@ export const SOURCE_LABEL: Record<string, string> = {
   ifct: "Ingredient",
   off: "Packaged",
   custom: "My food",
+  usda: "USDA",
 };
+
+/** "Everyday staple" for the bundled staples (cooked rice, dal, eggs…), else the dataset name. */
+export function sourceLabel(food: { source: string; category?: string | null }): string {
+  return food.category === "Everyday staples" ? "Everyday staple" : SOURCE_LABEL[food.source] ?? food.source;
+}
