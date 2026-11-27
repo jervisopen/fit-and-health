@@ -17,7 +17,7 @@ export function DateStrip({ date, goalKcal, onChange }: { date: string; goalKcal
   const greeting = date !== t ? "Your diary" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="glass-bar safe-top sticky top-0 z-20 px-4 pb-3">
+    <div className="safe-top sticky top-0 z-20 bg-bg/95 px-4 pb-3 backdrop-blur">
       <div className="flex items-center justify-between pt-3">
         <p className="text-sm text-ink-3">{greeting}</p>
         <ThemeToggle />
