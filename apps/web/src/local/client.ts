@@ -4,6 +4,15 @@ import type { FromWorker, ToWorker } from "./protocol.ts";
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (stage: string, pct: number) => void };
 
 let worker: Worker | null = null;
+let status: "starting" | "waiting" | "open" = "starting";
+const statusListeners = new Set<(s: typeof status) => void>();
+
+/** "waiting" while another fit&health tab or window has the database open. */
+export function onDatabaseStatus(cb: (s: typeof status) => void): () => void {
+  statusListeners.add(cb);
+  cb(status);
+  return () => { statusListeners.delete(cb); };
+}
 let seq = 0;
 const pending = new Map<number, Pending>();
 
@@ -12,6 +21,11 @@ function getWorker(): Worker {
   worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module", name: "fit-and-health-api" });
   worker.onmessage = (event: MessageEvent<FromWorker>) => {
     const msg = event.data;
+    if (msg.kind === "status") {
+      status = msg.status;
+      for (const cb of statusListeners) cb(status);
+      return;
+    }
     const p = pending.get(msg.id);
     if (!p) return;
     if (msg.kind === "progress") { p.onProgress?.(msg.stage, msg.pct); return; }

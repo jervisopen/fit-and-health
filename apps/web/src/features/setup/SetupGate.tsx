@@ -1,10 +1,10 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Database, Lock, Upload } from "lucide-react";
+import { Database, Lock, TriangleAlert, Upload } from "lucide-react";
 import { Button, ErrorNote, Spinner } from "../../components/ui.tsx";
 import { api } from "../../lib/api.ts";
 import { API_MODE } from "../../lib/transport.ts";
-import { localRestore, setupLocalFoods } from "../../local/client.ts";
+import { localInfo, localRestore, onDatabaseStatus, setupLocalFoods } from "../../local/client.ts";
 
 const SKIP_KEY = "fh.skipFoodSetup";
 
@@ -21,9 +21,17 @@ export async function requestPersistence(): Promise<boolean> {
 export function SetupGate({ children }: { children: ReactNode }) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health, enabled: API_MODE === "local", staleTime: Infinity });
   const [skip, setSkip] = useState(skipped);
+  const [dbStatus, setDbStatus] = useState<"starting" | "waiting" | "open">("starting");
+  useEffect(() => (API_MODE === "local" ? onDatabaseStatus(setDbStatus) : undefined), []);
   if (API_MODE === "server") return <>{children}</>;
-  if (health.isPending) return <div className="flex min-h-dvh items-center justify-center"><Spinner label="Opening your diary" /></div>;
-  if (health.isError) return <Welcome error={health.error} />;
+  if (health.isPending) {
+    return dbStatus === "waiting" ? (
+      <Notice title="fit&health is open somewhere else"
+        text="Your diary can only be open in one tab or window at a time. Close the other one (or the installed app) and this page continues by itself." />
+    ) : <div className="flex min-h-dvh items-center justify-center"><Spinner label="Opening your diary" /></div>;
+  }
+  // Never fall through to first-run setup on an error: the saved diary may be fine, just not opened.
+  if (health.isError) return <Notice title="Couldn't open your diary" error={health.error} retry />;
   if (health.data.foods === 0 && !skip) return <Welcome onSkip={() => {
     try { localStorage.setItem(SKIP_KEY, "1"); } catch { /* private mode */ }
     setSkip(true);
@@ -52,11 +60,26 @@ export function useFoodSetup() {
   return { run, progress, error };
 }
 
+function Notice({ title, text, error, retry }: { title: string; text?: string; error?: unknown; retry?: boolean }) {
+  return (
+    <main className="safe-top mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-6">
+      <h1 className="flex items-center gap-2 text-xl font-bold"><TriangleAlert size={22} className="text-warn" /> {title}</h1>
+      {text && <p className="text-ink-2">{text}</p>}
+      {error ? <ErrorNote error={error} /> : null}
+      {retry && <>
+        <p className="text-sm text-ink-3">Your saved data is not deleted. Close other fit&amp;health tabs or windows, then try again.</p>
+        <Button block onClick={() => location.reload()}>Try again</Button>
+      </>}
+    </main>
+  );
+}
+
 function Welcome({ onSkip, error: startError }: { onSkip?: () => void; error?: unknown }) {
   const setup = useFoodSetup();
   const fileInput = useRef<HTMLInputElement>(null);
   const [restoreError, setRestoreError] = useState<unknown>(null);
   const busy = setup.progress !== null;
+  const info = useQuery({ queryKey: ["storage-info"], queryFn: localInfo, staleTime: Infinity });
 
   return (
     <main className="safe-top mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-8 pt-12">
@@ -78,6 +101,12 @@ function Welcome({ onSkip, error: startError }: { onSkip?: () => void; error?: u
       </ul>
 
       {startError ? <div className="mt-6"><ErrorNote error={startError} /></div> : null}
+      {info.data && !info.data.persistent && (
+        <p className="mt-6 rounded-lg bg-warn-soft p-3 text-sm text-warn">
+          This browser can't save data for this site, so everything is lost when you close it. Use an up-to-date
+          Chrome, Edge, Firefox or Safari, outside private browsing.
+        </p>
+      )}
 
       <div className="mt-auto space-y-3 pt-10">
         {busy ? (

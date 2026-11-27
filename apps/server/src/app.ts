@@ -18,7 +18,8 @@ import {
 import { isValidTimeZone } from "../../../packages/shared/src/time.ts";
 import { bodyLimit } from "hono/body-limit";
 import { MAX_IMAGE_BYTES, SnapService } from "./snap/repo.ts";
-import { appVision, readSavedVisionConfig, saveVisionConfig, type LazyVision } from "./snap/vision/index.ts";
+import { appVision, envVisionConfig, readSavedVisionConfig, saveVisionConfig, type LazyVision } from "./snap/vision/index.ts";
+import { listVisionModels } from "./snap/vision/models.ts";
 import { DbBlobStore, type BlobStore } from "./snap/storage.ts";
 import { VisionConfigError } from "./snap/vision/types.ts";
 
@@ -82,6 +83,11 @@ const schemas = {
     model: z.string().max(100).optional(),
     baseURL: z.string().max(300).refine((u) => u === "" || /^https?:\/\//.test(u), "Must start with http:// or https://").optional(),
     effort: z.enum(["", "low", "medium", "high", "xhigh", "max"]).optional(),
+  }),
+  visionModels: z.object({
+    provider: z.enum(["openai", "gemini", "openai_compatible"]),
+    apiKey: z.string().max(500).optional(),
+    baseURL: z.string().max(300).refine((u) => u === "" || /^https?:\/\//.test(u), "Must start with http:// or https://").optional(),
   }),
   snapTrack: z.object({
     date: isoDate,
@@ -253,6 +259,18 @@ export function createApp({ db, offFetcher, clock = Date.now, env = {}, browser 
     const apiKey = b.apiKey === undefined ? previous?.apiKey : b.apiKey.trim() || undefined;
     saveVisionConfig(db, { provider: b.provider, apiKey, model: b.model?.trim() || undefined, baseURL: b.baseURL?.trim() || undefined, effort: b.effort || undefined });
     return c.json({ status: visionProvider.status() });
+  });
+  app.post("/settings/vision/models", async (c) => {
+    const b = await body(c, schemas.visionModels);
+    // No key typed: use the saved one (or the server's .env) for the same provider.
+    const saved = [readSavedVisionConfig(db), envVisionConfig(env)].find((x) => x?.provider === b.provider && x.apiKey);
+    const apiKey = b.apiKey?.trim() || saved?.apiKey;
+    try {
+      return c.json({ models: await listVisionModels({ provider: b.provider, apiKey, baseURL: b.baseURL?.trim() || saved?.baseURL }) });
+    } catch (e) {
+      if (e instanceof VisionConfigError) throw new ValidationError(e.message);
+      throw new ValidationError(`Couldn't load the model list: ${(e as Error).message}`);
+    }
   });
   app.delete("/settings/vision", (c) => { saveVisionConfig(db, null); return c.json({ status: visionProvider.status() }); });
   app.get("/snap", (c) => c.json(snaps.list(Math.min(Number(c.req.query("limit") ?? 30) || 30, 100))));

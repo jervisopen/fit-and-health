@@ -97,6 +97,8 @@ export const api = {
   health: () => request<HealthDTO>("GET", "/health"),
   visionSettings: () => request<VisionSettingsDTO>("GET", "/settings/vision"),
   saveVisionSettings: (b: VisionSettingsBody) => request<{ status: VisionStatusDTO }>("PUT", "/settings/vision", b),
+  visionModels: (b: { provider: string; apiKey?: string; baseURL?: string }) =>
+    request<{ models: { id: string; label: string }[] }>("POST", "/settings/vision/models", b),
   clearVisionSettings: () => request<{ status: VisionStatusDTO }>("DELETE", "/settings/vision"),
 
   /** Binary responses (photos, calendar file) as a Blob. */

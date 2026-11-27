@@ -3,6 +3,22 @@ import { DETECTION_JSON_SCHEMA, parseDetectionText, VisionConfigError, VisionRes
 import { SYSTEM_PROMPT, userPrompt } from "./prompt.ts";
 import { toBase64 } from "../../../../../packages/shared/src/bytes.ts";
 
+export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+
+/** "models/gemini-x" or a pasted display name like "Gemini 2.5 Flash" → the ID the API expects. */
+export function geminiModelId(model: string): string {
+  return model.trim().replace(/^models\//i, "").toLowerCase().replace(/\s+/g, "-");
+}
+
+/** Google's error JSON → its message (or the raw text). */
+function googleError(text: string): string {
+  try {
+    const m = (JSON.parse(text) as { error?: { message?: string } }).error?.message;
+    if (m) return m.replace(/^\*\s*/, "").trim();
+  } catch { /* not JSON */ }
+  return text.slice(0, 200);
+}
+
 export class GeminiVision implements VisionProvider {
   readonly name = "gemini";
   readonly model: string;
@@ -13,8 +29,8 @@ export class GeminiVision implements VisionProvider {
     if (!opts.apiKey) throw new VisionConfigError("Add your Gemini API key (VISION_API_KEY)");
     if (!opts.model) throw new VisionConfigError("Choose a Gemini model that accepts images (VISION_MODEL)");
     this.apiKey = opts.apiKey;
-    this.model = opts.model;
-    this.baseURL = (opts.baseURL ?? "https://generativelanguage.googleapis.com/v1beta").replace(/\/+$/, "");
+    this.model = geminiModelId(opts.model);
+    this.baseURL = (opts.baseURL || GEMINI_BASE_URL).replace(/\/+$/, "");
   }
 
   async detect(image: VisionImage, hint?: { mealName?: string }): Promise<VisionResult> {
@@ -32,10 +48,13 @@ export class GeminiVision implements VisionProvider {
       }),
       signal: AbortSignal.timeout(120_000),
     });
-    if (res.status === 400 || res.status === 403) {
-      const t = await res.text();
-      if (/API key/i.test(t)) throw new VisionConfigError("The Gemini API key was rejected. Check VISION_API_KEY in .env.");
-      throw new VisionResponseError(`The vision API rejected the request (${res.status}): ${t.slice(0, 200)}`);
+    if (res.status === 400 || res.status === 403 || res.status === 404) {
+      const msg = googleError(await res.text());
+      if (/API key/i.test(msg)) throw new VisionConfigError("Gemini rejected the API key. Check it in Me → Snap AI.");
+      if (res.status === 404 || /model/i.test(msg)) {
+        throw new VisionConfigError(`Gemini doesn't recognise the model "${this.model}". Pick one from the list in Me → Snap AI.`);
+      }
+      throw new VisionResponseError(`Gemini rejected the request: ${msg}`);
     }
     if (res.status === 429) throw new VisionResponseError("The vision API is rate limited. Wait a moment and try again.");
     if (!res.ok) throw new VisionResponseError(`The vision API failed (${res.status})`);

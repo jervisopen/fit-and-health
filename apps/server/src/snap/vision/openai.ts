@@ -18,7 +18,7 @@ export class OpenAICompatibleVision implements VisionProvider {
     if (opts.name === "openai" && !opts.apiKey) throw new VisionConfigError("Add your OpenAI API key (VISION_API_KEY)");
     if (opts.name === "openai_compatible" && !opts.baseURL) throw new VisionConfigError("Add the base URL of your OpenAI-compatible server (VISION_BASE_URL)");
     this.name = opts.name;
-    this.model = opts.model;
+    this.model = opts.model.trim();
     this.apiKey = opts.apiKey ?? "";
     this.baseURL = (opts.baseURL ?? "https://api.openai.com/v1").replace(/\/+$/, "");
     // Local servers vary in json_schema support; plain JSON mode plus Zod validation is the safe default there.
@@ -43,8 +43,9 @@ export class OpenAICompatibleVision implements VisionProvider {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(120_000),
     });
-    if (res.status === 401 || res.status === 403) throw new VisionConfigError("The vision API key was rejected. Check VISION_API_KEY in .env.");
+    if (res.status === 401 || res.status === 403) throw new VisionConfigError("The vision API key was rejected. Check it in Me → Snap AI.");
     if (res.status === 429) throw new VisionResponseError("The vision API is rate limited. Wait a moment and try again.");
+    if (res.status === 404) throw new VisionConfigError(`The server doesn't have the model "${this.model}". Pick one from the list in Me → Snap AI.`);
     if (!res.ok) throw new VisionResponseError(`The vision API failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
     const json = (await res.json()) as { model?: string; choices?: { message?: { content?: string | null; refusal?: string | null } }[] };
     const msg = json.choices?.[0]?.message;

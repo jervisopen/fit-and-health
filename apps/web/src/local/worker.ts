@@ -55,17 +55,63 @@ function host(raw: InstanceType<Sqlite3["oo1"]["DB"]>, persistent: boolean): Hos
   return { db, raw, app: createApp({ db, browser: true, mode: "local" }), persistent };
 }
 
+const opfsSupported = () =>
+  typeof navigator !== "undefined" && typeof navigator.storage?.getDirectory === "function" &&
+  typeof FileSystemFileHandle !== "undefined" && "createSyncAccessHandle" in FileSystemFileHandle.prototype;
+
+/**
+ * Only one copy of the app may have the database open (OPFS sync handles are exclusive). Hold a
+ * Web Lock for this worker's whole life: on a reload the new page waits until the old page's
+ * worker is gone instead of failing; with a second tab or the installed app open, it waits until
+ * that one closes.
+ */
+function holdDatabaseLock(): Promise<void> {
+  if (!navigator.locks) return Promise.resolve();
+  return new Promise((acquired, failed) => {
+    const waiting = setTimeout(() => post({ kind: "status", id: 0, status: "waiting" }), 1500);
+    navigator.locks.request("fit-and-health-db", { mode: "exclusive" }, () => {
+      clearTimeout(waiting);
+      post({ kind: "status", id: 0, status: "open" });
+      acquired();
+      return new Promise<never>(() => {}); // released when this worker ends
+    }).catch(failed);
+  });
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function openPool(): Promise<Pool> {
+  let last: unknown;
+  // Handles from a page that just closed can take a moment to be released.
+  for (const delay of [0, 250, 750, 1500, 3000]) {
+    if (delay) await sleep(delay);
+    try {
+      return await sqlite3.installOpfsSAHPoolVfs({
+        name: "fit-and-health",
+        initialCapacity: 6,
+        // The default deletes the whole pool when it can't open it. Never do that: it's the user's only copy.
+        preserveOnInitFailure: true,
+        ...({ forceReinitIfPreviouslyFailed: true } as object),
+      });
+    } catch (e) {
+      last = e;
+      console.warn("Opening the saved database failed, retrying", e);
+    }
+  }
+  throw new Error(`Couldn't open your saved data (${(last as Error)?.message ?? last}). Close other fit&health tabs or windows and try again.`);
+}
+
 async function start(): Promise<Host> {
   sqlite3 = await sqlite3InitModule();
-  try {
-    pool = await sqlite3.installOpfsSAHPoolVfs({ name: "fit-and-health", initialCapacity: 6 });
-    return host(new pool.OpfsSAHPoolDb(DB_FILE), true);
-  } catch (e) {
-    // Private browsing / unsupported browser: still works, but nothing survives a reload.
-    console.warn("OPFS unavailable, using a temporary in-memory database", e);
+  if (!opfsSupported()) {
+    // Very old browser: still usable, but nothing survives a reload (the app warns about this).
+    console.warn("OPFS unavailable, using a temporary in-memory database");
     pool = null;
     return host(new sqlite3.oo1.DB(":memory:"), false);
   }
+  await holdDatabaseLock();
+  pool = await openPool();
+  return host(new pool.OpfsSAHPoolDb(DB_FILE), true);
 }
 
 let ready = start();
