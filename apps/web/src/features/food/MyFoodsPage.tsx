@@ -21,10 +21,10 @@ export function MyFoodsPage() {
   };
 
   return (
-    <div className="safe-top px-4 pt-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">My foods</h1>
-        <Link to="/foods/new" className="inline-flex h-10 items-center gap-1 rounded-xl bg-brand px-3 font-semibold text-brand-ink">
+    <div className="safe-top px-4 [--safe-top-pad:2rem]">
+      <div className="flex min-h-10 items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">My foods</h1>
+        <Link to="/foods/new" className="inline-flex h-10 items-center gap-1 rounded-full bg-brand pl-3 pr-4 text-sm font-semibold text-brand-ink shadow-card">
           <Plus size={18} /> New
         </Link>
       </div>

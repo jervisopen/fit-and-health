@@ -3,7 +3,7 @@ import { Card } from "../components/ui.tsx";
 
 export function ComingSoon({ title, text, module }: { title: string; text: string; module?: string }) {
   return (
-    <div className="safe-top px-4 pt-6">
+    <div className="safe-top px-4 [--safe-top-pad:1.5rem]">
       <h1 className="text-2xl font-bold">{title}</h1>
       <Card className="mt-4 p-6 text-center">
         {module && <p className="text-xs font-semibold uppercase tracking-wide text-food">Coming in {module}</p>}

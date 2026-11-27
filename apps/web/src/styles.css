@@ -212,7 +212,9 @@ body {
 }
 .num { font-variant-numeric: tabular-nums; }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-.safe-top { padding-top: env(safe-area-inset-top); }
+/* Notch space plus the page's own top spacing. This rule sits outside Tailwind's layers, so it would
+   override a pt-* class; pages set their spacing with --safe-top-pad (e.g. [--safe-top-pad:2rem]). */
+.safe-top { padding-top: calc(env(safe-area-inset-top) + var(--safe-top-pad, 0px)); }
 .no-scrollbar { scrollbar-width: none; }
 /* We render our own clear button on search inputs. */
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }

@@ -20,8 +20,8 @@ export function SettingsPage() {
   const enabledMeals = s?.meals.filter((m) => m.enabled) ?? [];
 
   return (
-    <div className="safe-top space-y-3 px-4 pt-4">
-      <h1 className="text-2xl font-bold">Me</h1>
+    <div className="safe-top space-y-3 px-4 [--safe-top-pad:2rem]">
+      <h1 className="flex min-h-10 items-center text-2xl font-bold tracking-tight">Me</h1>
       <InstallCard />
       {!s ? <Spinner /> : (
         <Card>

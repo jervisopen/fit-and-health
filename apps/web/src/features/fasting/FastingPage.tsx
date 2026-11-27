@@ -25,10 +25,10 @@ export function FastingPage() {
   const plan = s?.plan ?? null;
 
   return (
-    <div className="safe-top px-4 pt-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Fasting</h1>
-        {plan && <IconButton label="Fasting plan settings" onClick={() => setSheet("plan")}><Settings2 size={22} /></IconButton>}
+    <div className="safe-top px-4 [--safe-top-pad:2rem]">
+      <div className="flex min-h-10 items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Fasting</h1>
+        {plan && <IconButton label="Fasting plan settings" className="bg-surface shadow-card" onClick={() => setSheet("plan")}><Settings2 size={22} /></IconButton>}
       </div>
       {plan && (
         <p className="text-sm text-ink-3">

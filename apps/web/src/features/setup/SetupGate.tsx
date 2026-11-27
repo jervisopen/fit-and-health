@@ -145,7 +145,7 @@ function Welcome({ onSkip, error: startError }: { onSkip?: () => void; error?: u
   const info = useQuery({ queryKey: ["storage-info"], queryFn: localInfo, staleTime: Infinity });
 
   return (
-    <main className="safe-top mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-8 pt-12">
+    <main className="safe-top mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-8 [--safe-top-pad:3rem]">
       <h1 className="text-3xl font-bold">fit&amp;health</h1>
       <p className="mt-2 text-ink-2">Food diary, meal photos and fasting. Free, with no account and no ads.</p>
 

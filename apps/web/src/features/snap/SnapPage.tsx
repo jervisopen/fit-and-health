@@ -50,8 +50,8 @@ export function SnapPage() {
   const configured = status.data?.configured;
 
   return (
-    <div className="safe-top px-4 pt-4">
-      <h1 className="text-2xl font-bold">Snap</h1>
+    <div className="safe-top px-4 [--safe-top-pad:2rem]">
+      <h1 className="flex min-h-10 items-center text-2xl font-bold tracking-tight">Snap</h1>
       <p className="text-sm text-ink-3">Photograph your plate. We'll find the foods and portions for you to confirm.</p>
 
       {status.data && !status.data.configured && (
