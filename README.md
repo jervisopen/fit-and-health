@@ -1,10 +1,35 @@
 # fit&health
 
-Self-hosted, mobile-first nutrition diary with Indian serving sizes, photo meal logging (Snap)
-and an intermittent-fasting tracker. See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design.
+**Track what you eat, the Indian way, without paying rent on your own health data.**
+
+Popular nutrition apps have turned the basics into a subscription. Logging a meal from a photo,
+seeing your vitamins and minerals, even a fasting timer can sit behind a paywall, while the app
+nudges you toward premium plans and coaches at every turn. Knowing what's on your plate shouldn't
+cost a monthly fee.
+
+fit&health is the free, open-source alternative. You run it yourself, on your own computer or
+server, and it's yours:
+
+- **Food diary built for Indian food.** Log in katoris, rotis, bowls, glasses and pieces, not just
+  grams. Over 1,600 foods out of the box: 1,014 Indian recipes, 542 raw ingredients with names in
+  15+ Indian languages, and packaged foods with live barcode lookup.
+- **Every nutrient, unlocked.** Calories, protein, carbs, fat and fibre, plus vitamins and minerals.
+  No locked cards, no "upgrade to see this".
+- **Snap your plate.** Photograph a meal and get the foods and portions to confirm. Bring your own
+  vision model: Claude, OpenAI, Gemini, or a free local model. You pay the provider directly at
+  cost, or nothing at all.
+- **Intermittent fasting.** Daily schedules or a simple timer, metabolic stages, streaks, history
+  and calendar reminders.
+- **No ads, no tracking, no account.** Your diary lives in a file on your machine. Nothing is sold,
+  shared or "personalized".
+- **Installs like an app.** Add it to your phone's home screen; it works offline for what you've
+  already loaded.
+
+See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design.
 
 fit&health is an independent open-source project. It is not affiliated with or endorsed by any
-commercial nutrition app, and it ships none of their code or data.
+commercial nutrition app, and it ships none of their code or data. Nutrition values come from public
+datasets and are estimates; this is not medical advice.
 
 ## Requirements
 
