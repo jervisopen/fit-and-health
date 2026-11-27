@@ -5,7 +5,6 @@
  * photos sent to the vision provider the user configured with their own key.
  */
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm";
-import readXlsxFile from "read-excel-file/web-worker";
 import { applyMigrations } from "../../../server/src/db/types.ts";
 import { createApp } from "../../../server/src/app.ts";
 import { setSeedLoader, type SeedName } from "../../../../data/ingest/lib/seeds.ts";
@@ -223,6 +222,8 @@ async function setupFoods(id: number, host: Host) {
   if (!indbRes.ok) throw new Error(`Couldn't download INDB (HTTP ${indbRes.status})`);
   const indbBytes = await indbRes.arrayBuffer();
   progress("Reading recipes…", 65);
+  // The spreadsheet reader is only needed for this one-time setup, so it's loaded here.
+  const { default: readXlsxFile } = await import("read-excel-file/web-worker");
   const indb = indbRecords(await readXlsxFile(indbBytes));
   const ifct = ifctRecords(ifctText);
   progress("Building your food database…", 80);

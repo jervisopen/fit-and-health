@@ -3,7 +3,7 @@
  * Structured output via output_config.format, validated again with Zod; server-side refusal
  * fallbacks enabled ("default" routes by refusal category); refusals handled before reading content.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import type AnthropicClient from "@anthropic-ai/sdk";
 import { DETECTION_JSON_SCHEMA, parseDetectionText, VisionResponseError, type VisionImage, type VisionProvider, type VisionResult } from "./types.ts";
 import { SYSTEM_PROMPT, userPrompt } from "./prompt.ts";
 import { toBase64 } from "../../../../../packages/shared/src/bytes.ts";
@@ -11,29 +11,42 @@ import { toBase64 } from "../../../../../packages/shared/src/bytes.ts";
 export const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5-5";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+type Sdk = typeof import("@anthropic-ai/sdk");
+
+// The SDK is loaded on the first Snap, not at startup: it's large, and most app starts never need it.
+let sdkPromise: Promise<Sdk> | null = null;
+let sdk: Sdk | null = null;
+const loadSdk = () => (sdkPromise ??= import("@anthropic-ai/sdk").then((m) => (sdk = m)));
 
 export class AnthropicVision implements VisionProvider {
   readonly name = "anthropic";
   readonly model: string;
-  private client: Anthropic;
   private effort: Effort;
+  private opts: { apiKey?: string; baseURL?: string; fetch?: typeof fetch; browser?: boolean };
+  private clientPromise: Promise<AnthropicClient> | null = null;
 
   constructor(opts: { apiKey?: string; model?: string; effort?: Effort; baseURL?: string; fetch?: typeof fetch; browser?: boolean }) {
-    // With no explicit key the SDK resolves ANTHROPIC_API_KEY / an `ant auth login` profile itself.
-    this.client = new Anthropic({
-      ...(opts.apiKey ? { apiKey: opts.apiKey } : {}),
-      ...(opts.baseURL ? { baseURL: opts.baseURL } : {}),
-      ...(opts.fetch ? { fetch: opts.fetch, maxRetries: 0 } : {}),
-      // In-browser mode the key is the user's own, typed into their own device; it goes only to Anthropic.
-      ...(opts.browser ? { dangerouslyAllowBrowser: true } : {}),
-    });
+    this.opts = opts;
     this.model = opts.model || DEFAULT_ANTHROPIC_MODEL;
     // Medium is this model's default; set explicitly. Raise to "high" if identification quality needs it.
     this.effort = opts.effort ?? "medium";
   }
 
+  private client(): Promise<AnthropicClient> {
+    const o = this.opts;
+    return (this.clientPromise ??= loadSdk().then(({ default: Anthropic }) => new Anthropic({
+      // With no explicit key the SDK resolves ANTHROPIC_API_KEY / an `ant auth login` profile itself.
+      ...(o.apiKey ? { apiKey: o.apiKey } : {}),
+      ...(o.baseURL ? { baseURL: o.baseURL } : {}),
+      ...(o.fetch ? { fetch: o.fetch, maxRetries: 0 } : {}),
+      // In-browser mode the key is the user's own, typed into their own device; it goes only to Anthropic.
+      ...(o.browser ? { dangerouslyAllowBrowser: true } : {}),
+    })));
+  }
+
   async detect(image: VisionImage, hint?: { mealName?: string }): Promise<VisionResult> {
-    const response = await this.client.beta.messages.create({
+    const client = await this.client();
+    const response = await client.beta.messages.create({
       model: this.model,
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
@@ -60,7 +73,10 @@ export class AnthropicVision implements VisionProvider {
 
 /** Map SDK errors to messages a user can act on (most specific first). */
 export function describeAnthropicError(e: unknown): string | null {
-  if (e instanceof Anthropic.AuthenticationError) return "The Anthropic API key was rejected. Check VISION_API_KEY in .env.";
+  // SDK errors only exist once a detect() has loaded the SDK.
+  if (!sdk) return null;
+  const Anthropic = sdk.default;
+  if (e instanceof Anthropic.AuthenticationError) return "The Anthropic API key was rejected. Check it in Me → Snap AI.";
   if (e instanceof Anthropic.PermissionDeniedError) return "This API key can't use the configured model.";
   if (e instanceof Anthropic.NotFoundError) return "The configured VISION_MODEL wasn't found.";
   if (e instanceof Anthropic.RateLimitError) return "The vision API is rate limited. Wait a moment and try again.";

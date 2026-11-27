@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Minus, Plus, X } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -56,12 +56,35 @@ export function PageHeader({ title, right, back = true }: { title: ReactNode; ri
   );
 }
 
+/**
+ * Height of the on-screen keyboard while a sheet is open. Android resizes the page itself
+ * (interactive-widget=resizes-content in index.html); iOS doesn't, so the sheet is lifted by the
+ * part of the screen the keyboard covers, using the visual viewport.
+ */
+function useKeyboardInset(active: boolean) {
+  const [state, setState] = useState<{ inset: number; height: number } | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) return;
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+      setState(inset > 80 ? { inset, height: vv.height } : null);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); setState(null); };
+  }, [active]);
+  return state;
+}
+
 /** Bottom sheet dialog: backdrop click and Escape close it; focus moves inside. */
 export function Sheet({ open, onClose, title, children, footer }: {
   open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const keyboard = useKeyboardInset(open);
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
@@ -81,6 +104,12 @@ export function Sheet({ open, onClose, title, children, footer }: {
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="animate-fade absolute inset-0 bg-black/40" onClick={onClose} />
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}
+        onFocus={(e) => {
+          // Bring the field being typed into above the on-screen keyboard.
+          const el = e.target as HTMLElement;
+          if (el.matches("input, select, textarea")) setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+        }}
+        style={keyboard ? { marginBottom: keyboard.inset, maxHeight: keyboard.height * 0.92 } : undefined}
         className="animate-sheet safe-bottom relative flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-3xl bg-surface outline-none">
         <div className="flex items-start gap-2 px-5 pt-4 pb-2">
           <h2 id={titleId} className="flex-1 text-lg font-semibold leading-snug">{title}</h2>

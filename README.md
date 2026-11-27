@@ -188,6 +188,7 @@ npm run dev:web:server   # Vite on :5173 in server mode, proxies /api to :8787 (
 npm test            # node:test suites (API, search, ingest, shared)
 npm run typecheck   # server + web
 npm run db:migrate  # apply schema migrations to var/app.db
+python apps/web/scripts/make-icons.py   # re-render the PNG app icons (needs Pillow)
 ```
 
 Layout: `apps/server` (Hono API + SQLite, runtime-neutral so it also runs in the browser),

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ChevronRight } from "lucide-react";
 import type { DiaryDayDTO } from "../../../../../packages/shared/src/api.ts";
@@ -9,20 +10,22 @@ export function SummaryCard({ day, exerciseKcal = 0 }: { day: DiaryDayDTO; exerc
   const eaten = day.totals.energy_kcal ?? 0;
   const goal = day.goals.calories + exerciseKcal;
   const left = goal - eaten;
+  // Smallest phones (under 360px wide): a smaller ring leaves room for the numbers beside it.
+  const narrow = useNarrow();
   return (
-    <Card className="p-5">
-      <div className="flex items-center gap-5">
-        <Ring value={eaten} max={goal} size={144} stroke={14}>
-          <span className="num text-[28px] font-bold leading-none tracking-tight">{kcal(Math.abs(left))}</span>
+    <Card className="p-4 min-[360px]:p-5">
+      <div className="flex items-center gap-4 min-[360px]:gap-5">
+        <Ring value={eaten} max={goal} size={narrow ? 112 : 144} stroke={narrow ? 11 : 14}>
+          <span className={`num font-bold leading-none tracking-tight ${narrow ? "text-[22px]" : "text-[28px]"}`}>{kcal(Math.abs(left))}</span>
           <span className="mt-1 text-xs text-ink-3">{left >= 0 ? "kcal left" : "kcal over"}</span>
         </Ring>
-        <dl className="grid flex-1 grid-cols-1 gap-2 text-sm">
-          <div className="flex justify-between"><dt className="text-ink-3">Eaten</dt><dd className="num font-semibold">{kcal(eaten)}</dd></div>
-          <div className="flex justify-between"><dt className="text-ink-3">Goal</dt><dd className="num font-semibold">{kcal(day.goals.calories)}</dd></div>
+        <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2 text-sm">
+          <div className="flex justify-between gap-3"><dt className="text-ink-3">Eaten</dt><dd className="num font-semibold">{kcal(eaten)}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-ink-3">Goal</dt><dd className="num font-semibold">{kcal(day.goals.calories)}</dd></div>
           {exerciseKcal > 0 && (
-            <div className="flex justify-between"><dt className="text-ink-3">Exercise</dt><dd className="num font-semibold text-workout">+{kcal(exerciseKcal)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-ink-3">Exercise</dt><dd className="num font-semibold text-workout">+{kcal(exerciseKcal)}</dd></div>
           )}
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-3">
             <dt className="text-ink-3">{left >= 0 ? "Remaining" : "Over"}</dt>
             <dd className={left >= 0 ? "num font-semibold text-brand" : "num font-semibold text-over"}>{kcal(Math.abs(left))}</dd>
           </div>
@@ -39,4 +42,16 @@ export function SummaryCard({ day, exerciseKcal = 0 }: { day: DiaryDayDTO; exerc
       </Link>
     </Card>
   );
+}
+
+function useNarrow() {
+  const query = "(max-width: 359px)";
+  const [narrow, setNarrow] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const mq = matchMedia(query);
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return narrow;
 }

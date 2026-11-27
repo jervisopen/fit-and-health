@@ -10,6 +10,7 @@ import { API_MODE } from "../../lib/transport.ts";
 import { DataCard } from "./DataCard.tsx";
 import { AutoBackupsCard } from "./AutoBackupsCard.tsx";
 import { ThemePicker } from "../../components/ThemeToggle.tsx";
+import { InstallCard } from "../../components/InstallCard.tsx";
 
 export function SettingsPage() {
   const settings = useSettings(today());
@@ -21,6 +22,7 @@ export function SettingsPage() {
   return (
     <div className="safe-top space-y-3 px-4 pt-4">
       <h1 className="text-2xl font-bold">Me</h1>
+      <InstallCard />
       {!s ? <Spinner /> : (
         <Card>
           <Row to="/me/goals" icon={<Target size={20} />} title="Daily goals"

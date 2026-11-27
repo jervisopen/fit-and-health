@@ -7,6 +7,7 @@ import { useToast } from "../../components/Toast.tsx";
 import { addDays, isValidIso, today } from "../../lib/dates.ts";
 import { useCopyMeal, useDiary, useTrackerDay } from "../../lib/queries.ts";
 import { TrackersCard } from "../trackers/TrackersCard.tsx";
+import { InstallCard } from "../../components/InstallCard.tsx";
 import { api } from "../../lib/api.ts";
 import { DateStrip } from "./DateStrip.tsx";
 import { SummaryCard } from "./SummaryCard.tsx";
@@ -54,6 +55,7 @@ export function DiaryPage() {
               </Link>
             )}
             <SummaryCard day={diary.data} exerciseKcal={exerciseKcal} />
+            <InstallCard dismissible />
             {t && <TrackersCard day={t} />}
             <h2 className="px-1 pt-2 text-base font-semibold">Meals</h2>
             {diary.data.meals.map((m) => (

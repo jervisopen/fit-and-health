@@ -25,7 +25,7 @@ export function PlanSetup({ plan, onSaved }: { plan: FastingPlanDTO | null; onSa
     <div className="space-y-5">
       <div>
         <p className="mb-2 text-sm font-medium text-ink-2" id="preset-label">Plan</p>
-        <div role="radiogroup" aria-labelledby="preset-label" className="grid grid-cols-3 gap-2">
+        <div role="radiogroup" aria-labelledby="preset-label" className="grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
           {FASTING_PRESETS.map((p) => (
             <button key={p.key} type="button" role="radio" aria-checked={d.presetKey === p.key}
               onClick={() => setD({ ...d, presetKey: p.key, fastingHours: p.fastingHours, startsAtMin: plan?.presetKey === p.key ? d.startsAtMin : p.startsAtMin })}
