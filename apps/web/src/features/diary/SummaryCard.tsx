@@ -4,9 +4,10 @@ import type { DiaryDayDTO } from "../../../../../packages/shared/src/api.ts";
 import { Card, MacroBar, Ring } from "../../components/ui.tsx";
 import { kcal } from "../../lib/format.ts";
 
-export function SummaryCard({ day }: { day: DiaryDayDTO }) {
+/** `exerciseKcal`: workout calories added to the budget (only when that's switched on). */
+export function SummaryCard({ day, exerciseKcal = 0 }: { day: DiaryDayDTO; exerciseKcal?: number }) {
   const eaten = day.totals.energy_kcal ?? 0;
-  const goal = day.goals.calories;
+  const goal = day.goals.calories + exerciseKcal;
   const left = goal - eaten;
   return (
     <Card className="p-4">
@@ -17,7 +18,10 @@ export function SummaryCard({ day }: { day: DiaryDayDTO }) {
         </Ring>
         <dl className="grid flex-1 grid-cols-1 gap-2 text-sm">
           <div className="flex justify-between"><dt className="text-ink-3">Eaten</dt><dd className="num font-semibold">{kcal(eaten)}</dd></div>
-          <div className="flex justify-between"><dt className="text-ink-3">Goal</dt><dd className="num font-semibold">{kcal(goal)}</dd></div>
+          <div className="flex justify-between"><dt className="text-ink-3">Goal</dt><dd className="num font-semibold">{kcal(day.goals.calories)}</dd></div>
+          {exerciseKcal > 0 && (
+            <div className="flex justify-between"><dt className="text-ink-3">Exercise</dt><dd className="num font-semibold text-workout">+{kcal(exerciseKcal)}</dd></div>
+          )}
           <div className="flex justify-between">
             <dt className="text-ink-3">{left >= 0 ? "Remaining" : "Over"}</dt>
             <dd className={left >= 0 ? "num font-semibold text-brand" : "num font-semibold text-over"}>{kcal(Math.abs(left))}</dd>

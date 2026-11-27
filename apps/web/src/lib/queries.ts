@@ -9,7 +9,23 @@ export const keys = {
   recent: (meal?: string) => ["recent", meal ?? ""] as const,
   custom: ["custom-foods"] as const,
   settings: ["settings"] as const,
+  trackers: (date: string) => ["trackers", date] as const,
+  trackerHistory: (from: string, to: string) => ["tracker-history", from, to] as const,
 };
+
+export const useTrackerDay = (date: string) => useQuery({ queryKey: keys.trackers(date), queryFn: () => api.trackerDay(date) });
+export const useTrackerHistory = (from: string, to: string) =>
+  useQuery({ queryKey: keys.trackerHistory(from, to), queryFn: () => api.trackerHistory(from, to) });
+
+/** Any tracker change refreshes the day cards, charts and (weight → profile) settings. */
+export function useInvalidateTrackers() {
+  const qc = useQueryClient();
+  return () => Promise.all([
+    qc.invalidateQueries({ queryKey: ["trackers"] }),
+    qc.invalidateQueries({ queryKey: ["tracker-history"] }),
+    qc.invalidateQueries({ queryKey: keys.settings }),
+  ]);
+}
 
 export const useDiary = (date: string) => useQuery({ queryKey: keys.diary(date), queryFn: () => api.diary(date) });
 export const useSummary = (from: string, to: string) =>

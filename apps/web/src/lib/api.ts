@@ -5,6 +5,10 @@ import type {
 import type { MacroGoals, Profile } from "../../../../packages/shared/src/goals.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
 import type { FastingLogDTO, FastingMode, FastingStatusDTO } from "../../../../packages/shared/src/fasting.ts";
+import type {
+  Activity, AddWaterBody, AddWorkoutBody, SetSleepBody, SetWeightBody, SleepDTO, TrackerDayDTO, TrackerHistoryDayDTO,
+  TrackerSettings, TrackerSettingsPatch, UpdateWorkoutBody, WaterEntryDTO, WeightEntryDTO, WorkoutDTO,
+} from "../../../../packages/shared/src/trackers.ts";
 import { apiFetch } from "./transport.ts";
 
 export class ApiError extends Error {
@@ -93,6 +97,22 @@ export const api = {
   saveGoals: (goals: MacroGoals, effectiveFrom: string) => request<SettingsDTO>("PUT", "/settings/goals", { ...goals, effectiveFrom }),
   saveMeals: (meals: MealSettingDTO[], effectiveFrom: string) => request<SettingsDTO>("PUT", "/settings/meals", { meals, effectiveFrom }),
   saveProfile: (p: Profile) => request<SettingsDTO>("PUT", "/settings/profile", p),
+
+  trackerDay: (date: string) => request<TrackerDayDTO>("GET", `/trackers/${date}`),
+  trackerHistory: (from: string, to: string) => request<TrackerHistoryDayDTO[]>("GET", `/trackers/history${q({ from, to })}`),
+  trackerSettings: () => request<TrackerSettings>("GET", "/trackers/settings"),
+  updateTrackerSettings: (b: TrackerSettingsPatch) => request<TrackerSettings>("PATCH", "/trackers/settings", b),
+  addWater: (b: AddWaterBody) => request<WaterEntryDTO>("POST", "/water", b),
+  deleteWater: (id: string) => request<void>("DELETE", `/water/${id}`),
+  setWeight: (date: string, b: SetWeightBody) => request<WeightEntryDTO>("PUT", `/weight/${date}`, b),
+  deleteWeight: (date: string) => request<void>("DELETE", `/weight/${date}`),
+  activities: () => request<Activity[]>("GET", "/workouts/activities"),
+  recentActivities: () => request<string[]>("GET", "/workouts/recent"),
+  addWorkout: (b: AddWorkoutBody) => request<WorkoutDTO>("POST", "/workouts", b),
+  updateWorkout: (id: string, b: UpdateWorkoutBody) => request<WorkoutDTO>("PATCH", `/workouts/${id}`, b),
+  deleteWorkout: (id: string) => request<void>("DELETE", `/workouts/${id}`),
+  setSleep: (date: string, b: SetSleepBody) => request<SleepDTO>("PUT", `/sleep/${date}`, b),
+  deleteSleep: (date: string) => request<void>("DELETE", `/sleep/${date}`),
 
   health: () => request<HealthDTO>("GET", "/health"),
   visionSettings: () => request<VisionSettingsDTO>("GET", "/settings/vision"),

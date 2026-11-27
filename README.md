@@ -20,6 +20,9 @@ no download, and your diary stays on your phone. Prefer your own server? Self-ho
   cost, or nothing at all.
 - **Intermittent fasting.** Daily schedules or a simple timer, metabolic stages, streaks, history
   and calendar reminders.
+- **Water, weight, workout and sleep.** Tap to add a glass, log weigh-ins against a healthy range
+  for Indian adults, pick from 35 activities (yoga, cricket, brisk walking…) for calorie estimates,
+  and log your nights. Charts for each, and workout calories can count toward your food budget.
 - **No ads, no tracking, no account.** Your diary lives on your device, in a real SQLite database
   inside the browser. Nothing is sold, shared or "personalized". Back it up to a file whenever you like.
 - **Installs like an app.** Add it to your phone's home screen and it works fully offline.
@@ -146,6 +149,17 @@ On Android Chrome, the Snap tab can also scan barcodes with the camera.
 - Reminders: the plan sheet offers an `.ics` calendar file with a daily alert 30 min before each fast
   and one when it ends. A web app can't send notifications while it's closed without a push server.
 - Stage descriptions are general information, not medical advice.
+
+## Trackers
+
+- **Water:** one-tap glasses; the default goal is about 35 ml per kg of body weight (1.5–4 L).
+- **Weight:** one weigh-in per day, trend chart, BMI and a healthy range of BMI 18.5–22.9 (the
+  cut-offs used for Asian Indian adults). Logging a weight keeps the goal profile's weight current.
+- **Workout:** calories = MET × weight × hours, with MET values from the Compendium of Physical
+  Activities (2011). Only the part above resting (MET − 1) is added to the food budget, and only if
+  you switch that on. Calories from a watch can be typed in instead.
+- **Sleep:** bedtime and wake-up for the night ending on a date; 7–9 h is the adult guideline.
+- Steps, blood glucose, medicine, heart rate and breathing rate are planned next.
 
 ## Development
 

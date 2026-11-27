@@ -22,6 +22,11 @@ import { appVision, envVisionConfig, readSavedVisionConfig, saveVisionConfig, ty
 import { listVisionModels } from "./snap/vision/models.ts";
 import { DbBlobStore, type BlobStore } from "./snap/storage.ts";
 import { VisionConfigError } from "./snap/vision/types.ts";
+import {
+  addWater, addWorkout, deleteSleep, deleteWater, deleteWeight, deleteWorkout, getTrackerSettings, setSleep, setWeight,
+  recentActivities, trackerDay, trackerHistory, updateTrackerSettings, updateWorkout,
+} from "./trackers/repo.ts";
+import { ACTIVITIES } from "../../../packages/shared/src/trackers.ts";
 
 
 // ── Validation ──────────────────────────────────────────────────────────────────────────────
@@ -88,6 +93,33 @@ const schemas = {
     provider: z.enum(["openai", "gemini", "openai_compatible"]),
     apiKey: z.string().max(500).optional(),
     baseURL: z.string().max(300).refine((u) => u === "" || /^https?:\/\//.test(u), "Must start with http:// or https://").optional(),
+  }),
+  water: z.object({ date: isoDate, ml: z.number().int().min(10).max(5000) }),
+  weight: z.object({ kg: z.number().min(20).max(400), note: z.string().max(200).nullable().optional() }),
+  workout: z.object({
+    date: isoDate,
+    activityKey: z.string().min(1).max(40),
+    minutes: z.number().int().min(1).max(1440),
+    name: z.string().trim().max(60).optional(),
+    kcal: z.number().min(0).max(10_000).optional(),
+    note: z.string().max(200).nullable().optional(),
+  }),
+  workoutPatch: z.object({
+    minutes: z.number().int().min(1).max(1440).optional(),
+    kcal: z.number().min(0).max(10_000).optional(),
+    note: z.string().max(200).nullable().optional(),
+  }),
+  sleep: z.object({
+    bedAt: epochMs,
+    wakeAt: epochMs,
+    quality: z.number().int().min(1).max(5).nullable().optional(),
+    note: z.string().max(200).nullable().optional(),
+  }),
+  trackerSettings: z.object({
+    water: z.object({ enabled: z.boolean(), goalMl: z.number().int().min(500).max(8000).nullable(), glassMl: z.number().int().min(50).max(1000) }).partial().optional(),
+    weight: z.object({ enabled: z.boolean(), goalKg: z.number().min(20).max(400).nullable(), heightCm: z.number().min(100).max(250).nullable() }).partial().optional(),
+    workout: z.object({ enabled: z.boolean(), goalMin: z.number().int().min(5).max(600), addToBudget: z.boolean() }).partial().optional(),
+    sleep: z.object({ enabled: z.boolean(), goalMin: z.number().int().min(180).max(900) }).partial().optional(),
   }),
   snapTrack: z.object({
     date: isoDate,
@@ -216,6 +248,29 @@ export function createApp({ db, offFetcher, clock = Date.now, env = {}, browser 
     setProfile(db, await body(c, schemas.profile));
     return c.json(getSettings(db, localToday()));
   });
+
+  // ── Trackers: water, weight, workout, sleep ──
+  app.get("/trackers/settings", (c) => c.json(getTrackerSettings(db)));
+  app.patch("/trackers/settings", async (c) => c.json(updateTrackerSettings(db, await body(c, schemas.trackerSettings))));
+  app.get("/trackers/history", (c) => {
+    const from = param(isoDate, c.req.query("from"), "from");
+    const to = param(isoDate, c.req.query("to"), "to");
+    if (from > to) throw new ValidationError("from must be on or before to");
+    if (Date.parse(to) - Date.parse(from) > 400 * 86_400_000) throw new ValidationError("At most 400 days at a time");
+    return c.json(trackerHistory(db, from, to));
+  });
+  app.get("/trackers/:date", (c) => c.json(trackerDay(db, param(isoDate, c.req.param("date"), "date"))));
+  app.post("/water", async (c) => c.json(addWater(db, await body(c, schemas.water), clock()), 201));
+  app.delete("/water/:id", (c) => { deleteWater(db, c.req.param("id")); return c.body(null, 204); });
+  app.put("/weight/:date", async (c) => c.json(setWeight(db, param(isoDate, c.req.param("date"), "date"), await body(c, schemas.weight), clock())));
+  app.delete("/weight/:date", (c) => { deleteWeight(db, param(isoDate, c.req.param("date"), "date")); return c.body(null, 204); });
+  app.get("/workouts/activities", (c) => c.json(ACTIVITIES));
+  app.get("/workouts/recent", (c) => c.json(recentActivities(db)));
+  app.post("/workouts", async (c) => c.json(addWorkout(db, await body(c, schemas.workout), clock()), 201));
+  app.patch("/workouts/:id", async (c) => c.json(updateWorkout(db, c.req.param("id"), await body(c, schemas.workoutPatch))));
+  app.delete("/workouts/:id", (c) => { deleteWorkout(db, c.req.param("id")); return c.body(null, 204); });
+  app.put("/sleep/:date", async (c) => c.json(setSleep(db, param(isoDate, c.req.param("date"), "date"), await body(c, schemas.sleep))));
+  app.delete("/sleep/:date", (c) => { deleteSleep(db, param(isoDate, c.req.param("date"), "date")); return c.body(null, 204); });
 
   // ── Fasting ──
   app.get("/fasting/status", (c) => c.json(getStatus(db, clock())));

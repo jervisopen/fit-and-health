@@ -28,6 +28,14 @@
   --fast: #2f9466;
   --fast-soft: #e2f3ea;
   --fast-ink: #ffffff;
+  --water: #2b87d1;
+  --water-soft: #e3f0fb;
+  --weight: #128a83;
+  --weight-soft: #dff3f1;
+  --workout: #c2457f;
+  --workout-soft: #fbe6ef;
+  --sleep: #5a54c9;
+  --sleep-soft: #ebeafa;
   --shadow: 0 1px 2px rgb(28 25 23 / 0.06), 0 2px 8px rgb(28 25 23 / 0.04);
   color-scheme: light;
 }
@@ -58,6 +66,14 @@
     --fast: #6fd19a;
     --fast-soft: #183326;
     --fast-ink: #0d1a12;
+    --water: #69b0ec;
+    --water-soft: #172a3b;
+    --weight: #4cc3bb;
+    --weight-soft: #143230;
+    --workout: #e584b0;
+    --workout-soft: #3a1d2a;
+    --sleep: #9a95f0;
+    --sleep-soft: #24223f;
     --shadow: none;
     color-scheme: dark;
   }
@@ -88,6 +104,14 @@
   --color-fast: var(--fast);
   --color-fast-soft: var(--fast-soft);
   --color-fast-ink: var(--fast-ink);
+  --color-water: var(--water);
+  --color-water-soft: var(--water-soft);
+  --color-weight: var(--weight);
+  --color-weight-soft: var(--weight-soft);
+  --color-workout: var(--workout);
+  --color-workout-soft: var(--workout-soft);
+  --color-sleep: var(--sleep);
+  --color-sleep-soft: var(--sleep-soft);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --shadow-card: var(--shadow);
 }

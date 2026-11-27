@@ -5,7 +5,8 @@ import type { FoodLogDTO, MealDTO } from "../../../../../packages/shared/src/api
 import { ErrorNote, Spinner } from "../../components/ui.tsx";
 import { useToast } from "../../components/Toast.tsx";
 import { addDays, isValidIso, today } from "../../lib/dates.ts";
-import { useCopyMeal, useDiary } from "../../lib/queries.ts";
+import { useCopyMeal, useDiary, useTrackerDay } from "../../lib/queries.ts";
+import { TrackersCard } from "../trackers/TrackersCard.tsx";
 import { api } from "../../lib/api.ts";
 import { DateStrip } from "./DateStrip.tsx";
 import { SummaryCard } from "./SummaryCard.tsx";
@@ -17,6 +18,9 @@ export function DiaryPage() {
   const raw = params.get("date");
   const date = isValidIso(raw) ? raw : today();
   const diary = useDiary(date);
+  const trackers = useTrackerDay(date);
+  const t = trackers.data;
+  const exerciseKcal = t?.settings.workout.enabled && t.settings.workout.addToBudget ? t.workout.netKcal : 0;
   const [openLog, setOpenLog] = useState<FoodLogDTO | null>(null);
   const copy = useCopyMeal();
   const toast = useToast();
@@ -49,7 +53,8 @@ export function DiaryPage() {
                 <span className="text-sm"><b>Set your goals.</b> You're seeing a default 2,000 kcal target.</span>
               </Link>
             )}
-            <SummaryCard day={diary.data} />
+            <SummaryCard day={diary.data} exerciseKcal={exerciseKcal} />
+            {t && <TrackersCard day={t} />}
             {diary.data.meals.map((m) => (
               <MealCard key={m.code} meal={m} date={date} onOpenLog={setOpenLog} onCopyPrevious={() => copyPrevious(m)} />
             ))}
