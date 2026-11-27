@@ -8,8 +8,8 @@ export function ThemeToggle({ className }: { className?: string }) {
   const next = theme === "dark" ? "light" : "dark";
   return (
     <button type="button" onClick={() => setChoice(next)} aria-label={`Switch to ${next} theme`} title={`Switch to ${next} theme`}
-      className={cx("flex h-9 w-9 items-center justify-center rounded-full border border-line bg-surface text-ink-2 shadow-card transition-colors hover:text-ink", className)}>
-      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      className={cx("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink-2 shadow-card transition-colors hover:text-ink", className)}>
+      {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
     </button>
   );
 }

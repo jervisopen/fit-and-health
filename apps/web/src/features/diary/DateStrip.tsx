@@ -18,12 +18,9 @@ export function DateStrip({ date, goalKcal, onChange }: { date: string; goalKcal
 
   return (
     <div className="safe-top sticky top-0 z-20 bg-bg/95 px-4 pb-3 backdrop-blur">
-      <div className="flex items-center justify-between pt-3">
-        <p className="text-sm text-ink-3">{greeting}</p>
-        <ThemeToggle />
-      </div>
-      <div className="flex items-center gap-1 pb-3">
+      <div className="flex items-end gap-2 pb-3 pt-3">
         <div className="min-w-0 flex-1">
+          <p className="text-sm text-ink-3">{greeting}</p>
           <button type="button" className="flex max-w-full items-center gap-1.5 text-left text-2xl font-bold tracking-tight"
             onClick={() => picker.current?.showPicker?.() ?? picker.current?.click()}>
             <span className="truncate">{relativeLabel(date)}</span>
@@ -32,6 +29,8 @@ export function DateStrip({ date, goalKcal, onChange }: { date: string; goalKcal
         </div>
         <input ref={picker} type="date" className="sr-only" tabIndex={-1} aria-label="Pick a date" value={date}
           onChange={(e) => e.target.value && onChange(e.target.value)} />
+        {/* One row of matching round buttons: theme, then day navigation. */}
+        <ThemeToggle className="mr-1" />
         <IconButton label="Previous day" className="bg-surface shadow-card" onClick={() => onChange(addDays(date, -1))}><ChevronLeft size={20} /></IconButton>
         <IconButton label="Next day" className="bg-surface shadow-card" onClick={() => onChange(addDays(date, 1))}><ChevronRight size={20} /></IconButton>
       </div>
