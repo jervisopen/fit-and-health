@@ -1,9 +1,10 @@
-# ourfitnesspal (working name)
+# fit&health
 
 Self-hosted, mobile-first nutrition diary with Indian serving sizes, photo meal logging (Snap)
 and an intermittent-fasting tracker. See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design.
 
-> Working name only. It is close to a commercial trademark, so pick a distinct name before publishing.
+fit&health is an independent open-source project. It is not affiliated with or endorsed by any
+commercial nutrition app, and it ships none of their code or data.
 
 ## Requirements
 

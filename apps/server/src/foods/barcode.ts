@@ -13,7 +13,7 @@ export type OffFetcher = (code: string) => Promise<Record<string, unknown> | nul
 
 const FIELDS = "code,product_name,product_name_en,generic_name,brands,categories_tags,serving_size,serving_quantity,quantity,image_front_small_url,nutriments";
 // Generic client id: no personal details are sent to Open Food Facts.
-const USER_AGENT = "self-hosted-nutrition-diary/0.1 (open-source)";
+const USER_AGENT = "fit-and-health/0.1 (self-hosted, open-source)";
 
 export const fetchFromOpenFoodFacts: OffFetcher = async (code) => {
   const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}?fields=${FIELDS}`, {

@@ -14,7 +14,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 const RAW_DIR = path.resolve(import.meta.dirname, "..", "raw");
 const MANIFEST = path.join(RAW_DIR, "manifest.json");
 // Generic client id on purpose: no personal contact details are sent to third parties.
-const USER_AGENT = "food-db-ingest/0.1 (self-hosted open-source nutrition app)";
+const USER_AGENT = "fit-and-health-data-fetch/0.1 (self-hosted, open-source)";
 
 type ManifestEntry = { url: string; sha256: string; bytes: number; fetchedAt: string; license: string };
 type Manifest = Record<string, ManifestEntry>;

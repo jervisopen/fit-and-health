@@ -14,9 +14,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "Food Diary",
-        short_name: "Diary",
-        description: "Self-hosted food diary, photo meal logging and fasting tracker.",
+        name: "fit&health",
+        short_name: "fit&health",
+        description: "Self-hosted food diary with Indian portions, photo meal logging and a fasting tracker.",
         theme_color: "#2f6f4f",
         background_color: "#f7f6f3",
         display: "standalone",

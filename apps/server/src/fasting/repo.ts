@@ -216,7 +216,7 @@ export function planIcs(plan: FastingPlanDTO): string {
   const dur = `PT${Math.floor(plan.fastingHours)}H${Math.round((plan.fastingHours % 1) * 60)}M`;
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   return [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//self-hosted food diary//fasting//EN", "CALSCALE:GREGORIAN",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//fit-and-health//fasting//EN", "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:fasting-${plan.id}`,
     `DTSTAMP:${stamp}`,
