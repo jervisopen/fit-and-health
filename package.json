@@ -1,6 +1,7 @@
 {
   "name": "fit-and-health",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Self-hosted, mobile-first nutrition diary, photo meal logging and intermittent fasting tracker.",

@@ -117,3 +117,13 @@ npm run db:migrate  # apply schema migrations to var/app.db
 Layout: `apps/server` (Hono API + SQLite), `apps/web` (React PWA), `packages/shared`
 (nutrient registry, meal types, goal calculator, API types), `data/ingest` (fetch/build pipeline),
 `data/seeds` (our own units, densities, synonyms).
+
+## Licence
+
+The fit&health code is released under the [MIT licence](LICENSE).
+
+The food datasets are not part of this repository and are not covered by it. `npm run data:fetch`
+downloads them onto your machine, where each keeps its own terms (see the table under
+[Food database](#food-database)): INDB (open access), IFCT 2017 (© ICMR-NIN; the machine-readable
+packaging is AGPL-3.0) and Open Food Facts (ODbL). If you redistribute a built database, follow
+those terms.
