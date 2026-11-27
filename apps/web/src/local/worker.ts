@@ -18,6 +18,7 @@ import pieceWeights from "../../../../data/seeds/piece_weights.csv?raw";
 import synonyms from "../../../../data/seeds/synonyms.csv?raw";
 import { WasmDb } from "./sqlite-db.ts";
 import type { FromWorker, ToWorker } from "./protocol.ts";
+import { getSnapshot, listSnapshots, putSnapshot, type SnapshotReason } from "./snapshots.ts";
 
 const SEEDS: Record<SeedName, string> = { generic_units: genericUnits, densities, piece_weights: pieceWeights, synonyms };
 setSeedLoader((name) => SEEDS[name]);
@@ -48,9 +49,44 @@ function memoryDbFrom(bytes: Uint8Array) {
   return db;
 }
 
-function host(raw: InstanceType<Sqlite3["oo1"]["DB"]>, persistent: boolean): Host {
+// Everything the user has logged; used to never snapshot (or overwrite backups with) an empty diary.
+const USER_TABLES = ["food_logs", "fasting_logs", "water_logs", "weight_logs", "workout_logs", "sleep_logs",
+  "steps_logs", "glucose_logs", "vital_logs", "medicines", "snap_images"];
+
+function userEntries(db: WasmDb): number {
+  const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name));
+  let n = 0;
+  for (const t of USER_TABLES) if (tables.has(t)) n += (db.prepare(`SELECT count(*) AS n FROM ${t}`).get() as { n: number }).n;
+  if (tables.has("foods")) n += (db.prepare("SELECT count(*) AS n FROM foods WHERE source = 'custom'").get() as { n: number }).n;
+  return n;
+}
+
+function pendingMigrations(db: WasmDb): number {
+  const has = db.prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'").get();
+  if (!has) return migrations.length;
+  const done = new Set((db.prepare("SELECT name FROM schema_migrations").all() as { name: string }[]).map((r) => r.name));
+  return migrations.filter((m) => !done.has(m.name)).length;
+}
+
+/** Save a snapshot unless the diary is empty. Never throws: a backup failure mustn't break the app. */
+async function snapshot(db: WasmDb, raw: { pointer?: unknown }, reason: SnapshotReason): Promise<boolean> {
+  try {
+    const entries = userEntries(db);
+    if (!entries) return false;
+    await putSnapshot(exportWithoutKey(raw), reason, entries);
+    return true;
+  } catch (e) {
+    console.warn("Automatic backup failed", e);
+    return false;
+  }
+}
+
+async function host(raw: InstanceType<Sqlite3["oo1"]["DB"]>, persistent: boolean): Promise<Host> {
   const db = new WasmDb(raw as never);
   db.exec("PRAGMA foreign_keys = ON;");
+  // An app update that changes an existing database gets a snapshot of the data as it was first.
+  const pending = pendingMigrations(db);
+  if (persistent && pending > 0 && pending < migrations.length) await snapshot(db, raw, "before-update");
   applyMigrations(db, migrations);
   return { db, raw, app: createApp({ db, browser: true, mode: "local" }), persistent };
 }
@@ -116,9 +152,30 @@ async function start(): Promise<Host> {
 
 let ready = start();
 
+/** One snapshot a day while the app is open (checked soon after start and every 30 minutes). */
+const DAY_GAP = 20 * 3_600_000;
+async function dailySnapshot() {
+  try {
+    const h = await ready;
+    if (!h.persistent) return;
+    const latest = (await listSnapshots()).find((x) => x.reason === "daily");
+    if (latest && Date.now() - latest.takenAt < DAY_GAP) return;
+    await snapshot(h.db, h.raw, "daily");
+  } catch (e) {
+    console.warn("Daily backup check failed", e);
+  }
+}
+setTimeout(() => void dailySnapshot(), 8_000);
+setInterval(() => void dailySnapshot(), 30 * 60_000);
+
 /** The whole database as a SQLite file, minus the saved vision API key. */
 function backup(h: Host): Uint8Array {
-  const bytes = sqlite3.capi.sqlite3_js_db_export(h.raw.pointer as never);
+  return exportWithoutKey(h.raw);
+}
+
+/** The database as a SQLite file, minus the saved vision API key. */
+function exportWithoutKey(raw: { pointer?: unknown }): Uint8Array {
+  const bytes = sqlite3.capi.sqlite3_js_db_export(raw.pointer as never);
   const copy = memoryDbFrom(bytes);
   try {
     // VACUUM rewrites the file so the deleted key isn't left behind in a free page.
@@ -141,6 +198,7 @@ async function restore(h: Host, bytes: Uint8Array): Promise<{ host: Host; error?
     probe.close();
   }
   const previous = sqlite3.capi.sqlite3_js_db_export(h.raw.pointer as never);
+  await snapshot(h.db, h.raw, "before-restore");
   h.db.close();
   const load = async (b: Uint8Array) => {
     if (!pool) return host(memoryDbFrom(b), false);
@@ -193,7 +251,33 @@ self.addEventListener("message", async (event: MessageEvent<ToWorker>) => {
       return;
     }
     if (msg.kind === "info") {
-      post({ kind: "done", id: msg.id, result: { persistent: host.persistent } });
+      post({ kind: "done", id: msg.id, result: { persistent: host.persistent, entries: userEntries(host.db) } });
+      return;
+    }
+    if (msg.kind === "snapshots") {
+      let snapshots: Awaited<ReturnType<typeof listSnapshots>> = [];
+      try { snapshots = await listSnapshots(); } catch (e) { console.warn("Couldn't read automatic backups", e); }
+      post({ kind: "done", id: msg.id, result: { snapshots, entries: userEntries(host.db) } });
+      return;
+    }
+    if (msg.kind === "snapshot-now") {
+      await snapshot(host.db, host.raw, "daily");
+      post({ kind: "done", id: msg.id, result: null });
+      return;
+    }
+    if (msg.kind === "snapshot-bytes" || msg.kind === "restore-snapshot") {
+      const snap = await getSnapshot(msg.snapshotId);
+      if (!snap) throw new Error("That automatic backup is no longer on this device.");
+      if (msg.kind === "snapshot-bytes") {
+        post({ kind: "done", id: msg.id, result: snap.bytes }, [snap.bytes]);
+        return;
+      }
+      const old = host;
+      const pending = restore(old, new Uint8Array(snap.bytes));
+      ready = pending.then((r) => r.host, () => old);
+      const { error } = await pending;
+      if (error) throw new Error(`Restore failed, your data is unchanged: ${error.message}`);
+      post({ kind: "done", id: msg.id, result: null });
       return;
     }
     if (msg.kind === "backup") {

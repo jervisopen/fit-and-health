@@ -8,6 +8,7 @@ import { useSettings } from "../../lib/queries.ts";
 import { api } from "../../lib/api.ts";
 import { API_MODE } from "../../lib/transport.ts";
 import { DataCard } from "./DataCard.tsx";
+import { AutoBackupsCard } from "./AutoBackupsCard.tsx";
 
 export function SettingsPage() {
   const settings = useSettings(today());
@@ -42,6 +43,7 @@ export function SettingsPage() {
         </p>
       </Card>
       {API_MODE === "local" && <DataCard foods={health.data?.foods} />}
+      {API_MODE === "local" && <AutoBackupsCard />}
       <p className="pb-4 text-center text-xs text-ink-3">
         fit&amp;health is free and open source (MIT). No account, no ads, no tracking.
       </p>

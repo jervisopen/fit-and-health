@@ -46,7 +46,11 @@ provider whose key you entered. Host it for free on any static host (see
 [Deploy the website](#deploy-the-website-free)).
 
 Data lives in one browser on one device. Use **Me → Your data → Back up** for a file you can
-**Restore** on another phone or browser. Backups leave out your Snap AI key. Installing the app to
+**Restore** on another phone or browser. Backups leave out your Snap AI key. The app also keeps
+**automatic backups** on the device (IndexedDB, separate from the database file): one a day, plus
+one before app updates and restores, keeping the last 7. If the diary ever opens empty while a
+backup exists, the app offers to bring it back. They don't help if the site's data is cleared or
+the phone is lost, so download a backup now and then too. Installing the app to
 the home screen also stops the browser from clearing its storage when space runs low.
 
 **2. Self-hosted server.** The same API on Node.js with `node:sqlite`, for a home server or a

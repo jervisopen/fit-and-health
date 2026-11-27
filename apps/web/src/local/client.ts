@@ -1,5 +1,8 @@
 /** Page side of the local API worker: a `fetch`-shaped function plus first-run setup. */
 import type { FromWorker, ToWorker } from "./protocol.ts";
+import type { SnapshotMeta } from "./snapshots.ts";
+
+export type { SnapshotMeta };
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (stage: string, pct: number) => void };
 
@@ -73,7 +76,26 @@ export function setupLocalFoods(onProgress: (stage: string, pct: number) => void
 }
 
 export function localInfo() {
-  return send<{ persistent: boolean }>({ kind: "info" });
+  return send<{ persistent: boolean; entries: number }>({ kind: "info" });
+}
+
+/** Automatic backups kept on this device, newest first, and how much the current diary holds. */
+export function localSnapshots() {
+  return send<{ snapshots: SnapshotMeta[]; entries: number }>({ kind: "snapshots" });
+}
+
+export function localSnapshotNow() {
+  return send<null>({ kind: "snapshot-now" });
+}
+
+export async function localSnapshotFile(snapshotId: string): Promise<Blob> {
+  const buf = await send<ArrayBuffer>({ kind: "snapshot-bytes", snapshotId });
+  return new Blob([buf], { type: "application/vnd.sqlite3" });
+}
+
+/** Replace this device's data with an automatic backup (the current data is snapshotted first). */
+export function localRestoreSnapshot(snapshotId: string) {
+  return send<null>({ kind: "restore-snapshot", snapshotId });
 }
 
 /** This device's data as a SQLite file (the Snap AI key is left out). */

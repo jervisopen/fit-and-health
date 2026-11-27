@@ -4,7 +4,11 @@ export type ToWorker =
   | { kind: "setup-foods"; id: number }
   | { kind: "info"; id: number }
   | { kind: "backup"; id: number }
-  | { kind: "restore"; id: number; bytes: ArrayBuffer };
+  | { kind: "restore"; id: number; bytes: ArrayBuffer }
+  | { kind: "snapshots"; id: number }
+  | { kind: "snapshot-now"; id: number }
+  | { kind: "snapshot-bytes"; id: number; snapshotId: string }
+  | { kind: "restore-snapshot"; id: number; snapshotId: string };
 
 export type FromWorker =
   | { kind: "response"; id: number; status: number; headers: [string, string][]; body: ArrayBuffer }
