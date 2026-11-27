@@ -48,12 +48,18 @@
   --breathing-soft: #dcf2f6;
   --nav: #1c1917;
   --nav-ink: #f7f6f3;
+  --glass-bg: rgb(255 255 255 / 0.58);
+  --glass-solid: rgb(255 255 255 / 0.95);
+  --glass-edge: rgb(255 255 255 / 0.75);
+  --glass-sheen: rgb(255 255 255 / 0.55);
+  --glass-shadow: 0 10px 30px rgb(28 25 23 / 0.16), 0 2px 6px rgb(28 25 23 / 0.08);
   --shadow: 0 1px 2px rgb(28 25 23 / 0.06), 0 2px 8px rgb(28 25 23 / 0.04);
   color-scheme: light;
 }
 
+/* Dark: follows the phone unless the user picked a theme (data-theme on <html>, see lib/theme.ts). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #111412;
     --surface: #1a1e1b;
     --surface-2: #232824;
@@ -98,9 +104,68 @@
     --breathing-soft: #15313a;
     --nav: #2b312c;
     --nav-ink: #f2f1ee;
+    --glass-bg: rgb(38 44 40 / 0.55);
+    --glass-solid: rgb(38 44 40 / 0.96);
+    --glass-edge: rgb(255 255 255 / 0.14);
+    --glass-sheen: rgb(255 255 255 / 0.10);
+    --glass-shadow: 0 10px 30px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
     --shadow: none;
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #111412;
+  --surface: #1a1e1b;
+  --surface-2: #232824;
+  --ink: #f2f1ee;
+  --ink-2: #c4c0b9;
+  --ink-3: #8f8a83;
+  --line: #2e3430;
+  --brand: #6cc28f;
+  --brand-ink: #0d1a12;
+  --brand-soft: #1f3328;
+  --food: #f39a55;
+  --food-soft: #35261a;
+  --protein: #86a4ec;
+  --carbs: #e9be5b;
+  --fat: #ec8a7f;
+  --fibre: #72c69b;
+  --over: #ef7b65;
+  --warn: #e6c06b;
+  --warn-soft: #332a14;
+  --veg: #5cc48a;
+  --nonveg: #ef7b65;
+  --fast: #6fd19a;
+  --fast-soft: #183326;
+  --fast-ink: #0d1a12;
+  --water: #69b0ec;
+  --water-soft: #172a3b;
+  --weight: #4cc3bb;
+  --weight-soft: #143230;
+  --workout: #e584b0;
+  --workout-soft: #3a1d2a;
+  --sleep: #9a95f0;
+  --sleep-soft: #24223f;
+  --steps: #e9b04f;
+  --steps-soft: #352914;
+  --glucose: #b98be8;
+  --glucose-soft: #2b1f3a;
+  --medicine: #9db1d6;
+  --medicine-soft: #1f2636;
+  --heart: #f07a85;
+  --heart-soft: #3a1c20;
+  --breathing: #5cc8dc;
+  --breathing-soft: #15313a;
+  --nav: #2b312c;
+  --nav-ink: #f2f1ee;
+  --glass-bg: rgb(38 44 40 / 0.55);
+  --glass-solid: rgb(38 44 40 / 0.96);
+  --glass-edge: rgb(255 255 255 / 0.14);
+  --glass-sheen: rgb(255 255 255 / 0.10);
+  --glass-shadow: 0 10px 30px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+  --shadow: none;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -182,6 +247,35 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
     color: var(--ink);
   }
   .input:focus { border-color: var(--brand); outline: none; }
+}
+
+/* Frosted glass, iOS style: see-through with a strong blur, a bright hairline edge and a soft top sheen.
+   Browsers without backdrop-filter get a near-solid panel so text stays readable. */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--glass-sheen), transparent 55%);
+}
+/* Bars pinned to the top of the screen: a lighter frost of the page colour. */
+.glass-bar {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--glass-solid); }
+  .glass-bar { background: var(--bg); }
 }
 
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }

@@ -9,6 +9,7 @@ import { api } from "../../lib/api.ts";
 import { API_MODE } from "../../lib/transport.ts";
 import { DataCard } from "./DataCard.tsx";
 import { AutoBackupsCard } from "./AutoBackupsCard.tsx";
+import { ThemePicker } from "../../components/ThemeToggle.tsx";
 
 export function SettingsPage() {
   const settings = useSettings(today());
@@ -31,6 +32,11 @@ export function SettingsPage() {
             detail={!vision.data ? "…" : vision.data.configured ? `${vision.data.provider} · ${vision.data.model}` : "Not set up"} />
         </Card>
       )}
+      <Card className="p-4">
+        <h2 className="mb-3 font-semibold">Appearance</h2>
+        <ThemePicker />
+        <p className="mt-2 text-xs text-ink-3">System follows your phone's light or dark setting.</p>
+      </Card>
       <Card className="p-4">
         <h2 className="flex items-center gap-2 font-semibold"><Database size={18} /> Food database</h2>
         <p className="mt-1 text-sm text-ink-2">

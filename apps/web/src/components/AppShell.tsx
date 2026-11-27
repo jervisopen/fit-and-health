@@ -10,7 +10,7 @@ const TABS = [
   { to: "/me", label: "Me", icon: User },
 ];
 
-/** Tabs live in a floating pill (inverse colours) with Snap as the round button in the middle. */
+/** Tabs live in a floating frosted-glass pill with Snap as the round button in the middle. */
 export function AppShell() {
   return (
     <div className="min-h-full">
@@ -19,12 +19,12 @@ export function AppShell() {
       </main>
       <nav aria-label="Main" className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
-        <ul className="pointer-events-auto mx-auto grid h-16 max-w-md grid-cols-5 items-center rounded-full border border-white/10 bg-nav px-1.5 shadow-[0_8px_24px_rgb(0_0_0/0.25)]">
+        <ul className="pointer-events-auto mx-auto grid h-16 max-w-md grid-cols-5 items-center glass rounded-full px-1.5">
           {TABS.map(({ to, label, icon: Icon, end, center }) => (
             <li key={to} className="flex justify-center">
               <NavLink to={to} end={end} aria-label={label}
-                className={({ isActive }) => cx("flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium transition-colors",
-                  center ? "" : isActive ? "text-nav-ink" : "text-nav-ink/55 hover:text-nav-ink/80")}>
+                className={({ isActive }) => cx("relative flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium transition-colors",
+                  center ? "" : isActive ? "text-brand" : "text-ink-2 hover:text-ink")}>
                 {({ isActive }) => center ? (
                   <span className={cx("flex h-12 w-12 items-center justify-center rounded-full transition-colors",
                     isActive ? "bg-brand text-brand-ink" : "bg-food text-white")}>
@@ -34,7 +34,7 @@ export function AppShell() {
                   <>
                     <Icon size={21} strokeWidth={isActive ? 2.4 : 1.8} />
                     <span>{label}</span>
-                    <span className={cx("h-1 w-1 rounded-full", isActive ? "bg-nav-ink" : "bg-transparent")} aria-hidden="true" />
+                    <span className={cx("h-1 w-1 rounded-full", isActive ? "bg-brand" : "bg-transparent")} aria-hidden="true" />
                   </>
                 )}
               </NavLink>

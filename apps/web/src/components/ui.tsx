@@ -42,7 +42,7 @@ export function IconButton({ label, className, children, ...rest }: ButtonHTMLAt
 export function PageHeader({ title, right, back = true }: { title: ReactNode; right?: ReactNode; back?: boolean }) {
   const navigate = useNavigate();
   return (
-    <header className="safe-top sticky top-0 z-20 bg-bg/95 backdrop-blur">
+    <header className="glass-bar safe-top sticky top-0 z-20">
       <div className="mx-auto flex h-14 max-w-xl items-center gap-1 px-2">
         {back && (
           <IconButton label="Back" onClick={() => (history.length > 1 ? navigate(-1) : navigate("/"))}>

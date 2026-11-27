@@ -6,8 +6,10 @@ import { registerSW } from "virtual:pwa-register";
 import { App } from "./App.tsx";
 import { ToastProvider } from "./components/Toast.tsx";
 import "./styles.css";
+import { initTheme } from "./lib/theme.ts";
 
 registerSW({ immediate: true });
+initTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true } },

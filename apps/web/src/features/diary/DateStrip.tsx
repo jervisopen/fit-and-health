@@ -3,6 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDays, fromIso, relativeLabel, today, weekOf, weekdayShort } from "../../lib/dates.ts";
 import { useSummary } from "../../lib/queries.ts";
 import { cx, IconButton } from "../../components/ui.tsx";
+import { ThemeToggle } from "../../components/ThemeToggle.tsx";
 
 /** Header with day navigation and a Monday-first week strip showing each day's progress. */
 export function DateStrip({ date, goalKcal, onChange }: { date: string; goalKcal: number; onChange: (d: string) => void }) {
@@ -16,10 +17,13 @@ export function DateStrip({ date, goalKcal, onChange }: { date: string; goalKcal
   const greeting = date !== t ? "Your diary" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="safe-top sticky top-0 z-20 bg-bg/95 px-4 pb-3 backdrop-blur">
-      <div className="flex items-end gap-1 pb-3 pt-3">
+    <div className="glass-bar safe-top sticky top-0 z-20 px-4 pb-3">
+      <div className="flex items-center justify-between pt-3">
+        <p className="text-sm text-ink-3">{greeting}</p>
+        <ThemeToggle />
+      </div>
+      <div className="flex items-center gap-1 pb-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-ink-3">{greeting}</p>
           <button type="button" className="flex max-w-full items-center gap-1.5 text-left text-2xl font-bold tracking-tight"
             onClick={() => picker.current?.showPicker?.() ?? picker.current?.click()}>
             <span className="truncate">{relativeLabel(date)}</span>
