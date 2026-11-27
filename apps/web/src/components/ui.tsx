@@ -8,7 +8,7 @@ export function cx(...c: (string | false | null | undefined)[]) {
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cx("rounded-2xl bg-surface shadow-card border border-line", className)}>{children}</section>;
+  return <section className={cx("rounded-3xl bg-surface shadow-card border border-line", className)}>{children}</section>;
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger"; block?: boolean };

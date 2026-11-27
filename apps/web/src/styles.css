@@ -46,6 +46,8 @@
   --heart-soft: #fbe5e7;
   --breathing: #0e8fa8;
   --breathing-soft: #dcf2f6;
+  --nav: #1c1917;
+  --nav-ink: #f7f6f3;
   --shadow: 0 1px 2px rgb(28 25 23 / 0.06), 0 2px 8px rgb(28 25 23 / 0.04);
   color-scheme: light;
 }
@@ -94,6 +96,8 @@
     --heart-soft: #3a1c20;
     --breathing: #5cc8dc;
     --breathing-soft: #15313a;
+    --nav: #2b312c;
+    --nav-ink: #f2f1ee;
     --shadow: none;
     color-scheme: dark;
   }
@@ -142,6 +146,8 @@
   --color-heart-soft: var(--heart-soft);
   --color-breathing: var(--breathing);
   --color-breathing-soft: var(--breathing-soft);
+  --color-nav: var(--nav);
+  --color-nav-ink: var(--nav-ink);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --shadow-card: var(--shadow);
 }

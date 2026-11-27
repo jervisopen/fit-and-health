@@ -55,6 +55,7 @@ export function DiaryPage() {
             )}
             <SummaryCard day={diary.data} exerciseKcal={exerciseKcal} />
             {t && <TrackersCard day={t} />}
+            <h2 className="px-1 pt-2 text-base font-semibold">Meals</h2>
             {diary.data.meals.map((m) => (
               <MealCard key={m.code} meal={m} date={date} onOpenLog={setOpenLog} onCopyPrevious={() => copyPrevious(m)} />
             ))}

@@ -10,10 +10,10 @@ export function SummaryCard({ day, exerciseKcal = 0 }: { day: DiaryDayDTO; exerc
   const goal = day.goals.calories + exerciseKcal;
   const left = goal - eaten;
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-4">
-        <Ring value={eaten} max={goal}>
-          <span className="num text-2xl font-bold leading-none">{kcal(Math.abs(left))}</span>
+    <Card className="p-5">
+      <div className="flex items-center gap-5">
+        <Ring value={eaten} max={goal} size={144} stroke={14}>
+          <span className="num text-[28px] font-bold leading-none tracking-tight">{kcal(Math.abs(left))}</span>
           <span className="mt-1 text-xs text-ink-3">{left >= 0 ? "kcal left" : "kcal over"}</span>
         </Ring>
         <dl className="grid flex-1 grid-cols-1 gap-2 text-sm">
