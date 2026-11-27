@@ -25,10 +25,12 @@ export type FoodSearchResult = {
   defaultQuantity: number;
   kcalPerDefault: number | null;
   dataQuality: string | null;
+  /** "words": every query word (or a synonym) matched; "fuzzy": spelling-similarity fallback. */
+  matchKind: "words" | "fuzzy";
   score: number;
 };
 
-type Candidate = { foodId: string; name: string; isPrimary: number; text: number };
+type Candidate = { foodId: string; name: string; isPrimary: number; text: number; fuzzy?: boolean };
 
 // Fuzzy (trigram) matching only for queries long enough to be meaningful:
 // "chai" would otherwise match "Elumichai rasam".
@@ -119,7 +121,7 @@ function fuzzyCandidates(db: DatabaseSync, norm: string): Candidate[] {
   const out: Candidate[] = [];
   for (const r of rows) {
     const cov = trigramCoverage(norm, r.name);
-    if (cov >= FUZZY_MIN_COVERAGE) out.push({ ...r, text: cov * 0.9 });
+    if (cov >= FUZZY_MIN_COVERAGE) out.push({ ...r, text: cov * 0.9, fuzzy: true });
   }
   return out;
 }
@@ -176,6 +178,7 @@ export function searchFoods(db: DatabaseSync, query: string, opts: SearchOptions
       defaultQuantity,
       kcalPerDefault: kcal !== null ? kcalFor(kcal, (weight ?? 1) * defaultQuantity) : null,
       dataQuality: quality,
+      matchKind: c.fuzzy ? "fuzzy" : "words",
       score: Math.round(score * 1000) / 1000,
     };
   });

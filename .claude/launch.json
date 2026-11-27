@@ -8,6 +8,12 @@
       "port": 8787
     },
     {
+      "name": "api-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:api:mock"],
+      "port": 8787
+    },
+    {
       "name": "web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:web"],

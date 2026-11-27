@@ -47,8 +47,9 @@ export function AddFoodPage() {
   useEffect(() => {
     const open = params.get("open");
     if (open) {
-      setPending({ id: open, source: "custom" });
+      setPending({ id: open, source: params.get("source") === "barcode" ? "barcode" : "custom" });
       params.delete("open");
+      params.delete("source");
       setParams(params, { replace: true });
     }
   }, [params, setParams]);

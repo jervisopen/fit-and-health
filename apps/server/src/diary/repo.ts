@@ -80,6 +80,7 @@ function toLog(r: Record<string, unknown>): FoodLogDTO {
     weightG: r.weight_g as number,
     nutrients,
     source: r.source as LogSource,
+    snapImageId: (r.snap_image_id as string) ?? null,
     dataQuality: (r.data_quality as string) ?? null,
     createdAt: r.created_at as number,
   };
@@ -98,18 +99,22 @@ function writeNutrients(db: DatabaseSync, id: string, nutrients: NutrientValues)
   db.prepare(`UPDATE food_logs SET ${sets} WHERE id = ?`).run(...NUTRIENT_KEYS.map((k) => nutrients[k] ?? null), id);
 }
 
-export function createLog(db: DatabaseSync, body: CreateLogBody): FoodLogDTO {
+/** Insert one log (call inside a transaction when creating several). */
+export function insertLog(db: DatabaseSync, body: CreateLogBody & { snapImageId?: string }): string {
   const food = getFoodRow(db, body.foodId);
   if (!food) throw new NotFoundError(`Food ${body.foodId} not found`);
   const measure = resolveMeasure(db, food, body.measureId);
   const weightG = round(measure.weightG * body.quantity, 2);
   const id = randomUUID();
-  transaction(db, () => {
-    db.prepare(`INSERT INTO food_logs (id, diary_date, meal_type, food_id, food_name, measure_id, measure_name, quantity, weight_g, source, consumed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())`)
-      .run(id, body.date, body.mealType, food.id, food.name, measure.id, measure.name, body.quantity, weightG, body.source ?? "search");
-    writeNutrients(db, id, scaleNutrients(per100g(food), weightG));
-  });
+  db.prepare(`INSERT INTO food_logs (id, diary_date, meal_type, food_id, food_name, measure_id, measure_name, quantity, weight_g, source, snap_image_id, consumed_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())`)
+    .run(id, body.date, body.mealType, food.id, food.name, measure.id, measure.name, body.quantity, weightG, body.source ?? "search", body.snapImageId ?? null);
+  writeNutrients(db, id, scaleNutrients(per100g(food), weightG));
+  return id;
+}
+
+export function createLog(db: DatabaseSync, body: CreateLogBody): FoodLogDTO {
+  const id = transaction(db, () => insertLog(db, body));
   return getLog(db, id);
 }
 

@@ -16,6 +16,17 @@ import {
   activePlan, deleteFast, endFast, endPlan, getStatus, history, planIcs, setPlan, startFast, updateFast,
 } from "./fasting/repo.ts";
 import { isValidTimeZone } from "../../../packages/shared/src/time.ts";
+import { bodyLimit } from "hono/body-limit";
+import path from "node:path";
+import { REPO_ROOT } from "./db/index.ts";
+import { MAX_IMAGE_BYTES, SnapService } from "./snap/repo.ts";
+import { lazyVision, type LazyVision } from "./snap/vision/index.ts";
+import { VisionConfigError } from "./snap/vision/types.ts";
+
+function defaultDataDir(): string {
+  const configured = process.env.DATA_DIR ?? "./var";
+  return path.isAbsolute(configured) ? configured : path.resolve(REPO_ROOT, configured);
+}
 
 // ── Validation ──────────────────────────────────────────────────────────────────────────────
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((s) => !Number.isNaN(Date.parse(`${s}T00:00:00Z`)), "Invalid date");
@@ -70,6 +81,16 @@ const schemas = {
     endedAt: z.number().int().positive().optional(),
     note: z.string().max(500).nullable().optional(),
   }).refine((o) => Object.keys(o).length > 0, "Nothing to update"),
+  snapTrack: z.object({
+    date: isoDate,
+    mealType,
+    items: z.array(z.object({
+      detectionId: z.string().optional(),
+      foodId: z.string().min(1),
+      measureId: z.string().min(1),
+      quantity,
+    })).min(1).max(30),
+  }),
   customFood: z.object({
     name: z.string().trim().min(2).max(120),
     brand: z.string().trim().max(80).optional(),
@@ -99,14 +120,24 @@ export function localToday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export type AppDeps = { db: DatabaseSync; offFetcher?: OffFetcher; clock?: () => number };
+export type AppDeps = {
+  db: DatabaseSync;
+  offFetcher?: OffFetcher;
+  clock?: () => number;
+  /** Vision provider for Snap (defaults to the one configured in .env). */
+  vision?: LazyVision;
+  /** Where photos are stored (defaults to DATA_DIR or ./var). */
+  dataDir?: string;
+};
 
-export function createApp({ db, offFetcher, clock = Date.now }: AppDeps) {
+export function createApp({ db, offFetcher, clock = Date.now, vision = lazyVision(), dataDir = defaultDataDir() }: AppDeps) {
   const app = new Hono().basePath("/api");
+  const snaps = new SnapService(db, dataDir, vision);
 
   app.onError((err, c) => {
     if (err instanceof ValidationError) return c.json({ error: err.message }, 400);
     if (err instanceof NotFoundError) return c.json({ error: err.message }, 404);
+    if (err instanceof VisionConfigError) return c.json({ error: err.message, code: "vision_not_configured" }, 503);
     console.error(err);
     return c.json({ error: "Internal error" }, 500);
   });
@@ -195,6 +226,28 @@ export function createApp({ db, offFetcher, clock = Date.now }: AppDeps) {
   });
   app.patch("/fasting/logs/:id", async (c) => c.json(updateFast(db, c.req.param("id"), await body(c, schemas.fastingPatch), clock())));
   app.delete("/fasting/logs/:id", (c) => { deleteFast(db, c.req.param("id")); return c.body(null, 204); });
+  // ── Snap ──
+  app.get("/snap/status", (c) => c.json(vision.status()));
+  app.get("/snap", (c) => c.json(snaps.list(Math.min(Number(c.req.query("limit") ?? 30) || 30, 100))));
+  app.post("/snap", bodyLimit({ maxSize: MAX_IMAGE_BYTES + 512 * 1024, onError: (c) => c.json({ error: "Photo is larger than 8 MB" }, 413) }), async (c) => {
+    const form = await c.req.parseBody();
+    const file = form.image;
+    if (!(file instanceof File)) throw new ValidationError("Attach the photo as the 'image' field");
+    const meal = typeof form.mealType === "string" && form.mealType ? param(mealType, form.mealType, "mealType") : undefined;
+    const capturedAt = typeof form.capturedAt === "string" && form.capturedAt ? param(epochMs, Number(form.capturedAt), "capturedAt") : undefined;
+    const mealName = typeof form.mealName === "string" ? form.mealName.slice(0, 40) : undefined;
+    const snap = await snaps.create(new Uint8Array(await file.arrayBuffer()), { mealType: meal, mealName, capturedAt });
+    return c.json(snap, 201);
+  });
+  app.get("/snap/:id", (c) => c.json(snaps.get(c.req.param("id"))));
+  app.get("/snap/:id/image", (c) => {
+    const { bytes, mime } = snaps.image(c.req.param("id"));
+    return c.body(new Uint8Array(bytes), 200, { "content-type": mime, "cache-control": "private, max-age=31536000, immutable" });
+  });
+  app.post("/snap/:id/retry", async (c) => c.json(await snaps.retry(c.req.param("id"))));
+  app.post("/snap/:id/track", async (c) => c.json(snaps.track(c.req.param("id"), await body(c, schemas.snapTrack)), 201));
+  app.delete("/snap/:id", (c) => { snaps.remove(c.req.param("id")); return c.body(null, 204); });
+
   app.get("/fasting/plan.ics", (c) => {
     const plan = activePlan(db);
     if (!plan) throw new NotFoundError("No active fasting plan");

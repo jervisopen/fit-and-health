@@ -13,6 +13,7 @@
   },
   "scripts": {
     "dev:api": "node --watch-path=apps/server/src --watch-path=packages/shared/src apps/server/src/index.ts",
+    "dev:api:mock": "node --env-file=dev/mock.env --watch-path=apps/server/src --watch-path=packages/shared/src apps/server/src/index.ts",
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
     "start": "node apps/server/src/index.ts",

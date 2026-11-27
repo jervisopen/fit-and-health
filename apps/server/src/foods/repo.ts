@@ -73,6 +73,11 @@ function summarize(row: FoodRow, measures?: MeasureDTO[]): FoodSummaryDTO {
   };
 }
 
+export function foodSummary(db: DatabaseSync, id: string): FoodSummaryDTO | null {
+  const row = getFoodRow(db, id);
+  return row ? summarize(row, measuresFor(db, row)) : null;
+}
+
 export function getFoodDetail(db: DatabaseSync, id: string): FoodDetailDTO {
   const row = getFoodRow(db, id);
   if (!row) throw new NotFoundError(`Food ${id} not found`);

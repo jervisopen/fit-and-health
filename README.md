@@ -47,6 +47,26 @@ npm start           # http://localhost:8787 serves the API and the app
 Install it from the browser menu ("Add to Home screen") on a phone on the same network.
 Copy `.env.example` to `.env` to change the port or database location.
 
+## Snap (photo meal logging)
+
+Photograph a plate → a vision model lists each food with a household portion and a box on the photo
+→ each item is matched to the food database → you tick, fix portions or swap foods → one tap logs
+them to the diary (with the photo as a thumbnail).
+
+Configure the model in `.env` (see `.env.example`). The key never leaves the server:
+
+| `VISION_PROVIDER` | Needs | Notes |
+|---|---|---|
+| `anthropic` | `VISION_API_KEY` (or `ANTHROPIC_API_KEY`) | Official SDK, default model `claude-opus-5-5`, structured output, server-side refusal fallback. `VISION_EFFORT` optional (default `medium`). |
+| `openai` | `VISION_API_KEY`, `VISION_MODEL` | Chat Completions with a strict JSON schema. |
+| `gemini` | `VISION_API_KEY`, `VISION_MODEL` | `generateContent` in JSON mode. |
+| `openai_compatible` | `VISION_BASE_URL`, `VISION_MODEL` | Local models via Ollama, vLLM, LM Studio… |
+| `mock` | nothing | Same sample thali for every photo; `npm run dev:api:mock` uses it. |
+
+Photos are resized in the browser (≈1280 px JPEG) and stored under `DATA_DIR/snaps/`. Each Snap
+sends one image to the provider you configured, and that provider's pricing and data policy apply.
+On Android Chrome, the Snap tab can also scan barcodes with the camera.
+
 ## Fasting tracker
 
 - **Daily schedule** (e.g. 16:8 from 8 PM): fasts are tracked automatically; start or end any day's

@@ -70,6 +70,7 @@ export type FoodLogDTO = {
   weightG: number;
   nutrients: NutrientValues;
   source: LogSource;
+  snapImageId: string | null;
   dataQuality: string | null;
   createdAt: number;
 };
@@ -118,5 +119,45 @@ export type CustomFoodBody = {
   /** Values for one serving; converted to per 100 g on save. */
   perServing: NutrientValues;
 };
+
+export type SnapDetectionDTO = {
+  id: string;
+  label: string;
+  localName: string | null;
+  confidence: number | null;
+  /** Fractions of the image, origin top-left. */
+  bbox: { x: number; y: number; w: number; h: number } | null;
+  /** Best database match (null when nothing matched). */
+  food: FoodSummaryDTO | null;
+  measureId: string | null;
+  quantity: number | null;
+  weightG: number | null;
+  alternatives: FoodSummaryDTO[];
+  selected: boolean;
+  foodLogId: string | null;
+};
+
+export type SnapStatus = "uploaded" | "processing" | "detected" | "no_food" | "failed" | "tracked";
+
+export type SnapImageDTO = {
+  id: string;
+  status: SnapStatus;
+  capturedAt: number;
+  mealType: MealTypeCode | null;
+  provider: string | null;
+  model: string | null;
+  notes: string | null;
+  error: string | null;
+  imageUrl: string;
+  detections: SnapDetectionDTO[];
+};
+
+export type SnapTrackBody = {
+  date: string;
+  mealType: MealTypeCode;
+  items: { detectionId?: string; foodId: string; measureId: string; quantity: number }[];
+};
+
+export type VisionStatusDTO = { configured: true; provider: string; model: string } | { configured: false; reason: string };
 
 export type ApiError = { error: string; details?: unknown };

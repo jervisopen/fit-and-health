@@ -40,6 +40,10 @@ export function MealCard({ meal, date, onOpenLog, onCopyPrevious }: {
           {meal.logs.map((log) => (
             <li key={log.id}>
               <button type="button" onClick={() => onOpenLog(log)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
+                {log.snapImageId && (
+                  <img src={`/api/snap/${log.snapImageId}/image`} alt="" loading="lazy"
+                    className="h-9 w-9 shrink-0 rounded-lg object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{log.foodName}</p>
                   <p className="truncate text-xs text-ink-3">{portion(log.quantity, log.measureName, log.measureName === "g" ? undefined : log.weightG)}</p>

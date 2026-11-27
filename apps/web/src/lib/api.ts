@@ -1,6 +1,6 @@
 import type {
   CreateLogBody, CustomFoodBody, DaySummaryDTO, DiaryDayDTO, FoodDetailDTO, FoodLogDTO, FoodSearchResultDTO,
-  FoodSummaryDTO, MealSettingDTO, RecentFoodDTO, SettingsDTO, UpdateLogBody,
+  FoodSummaryDTO, MealSettingDTO, RecentFoodDTO, SettingsDTO, SnapImageDTO, SnapTrackBody, UpdateLogBody, VisionStatusDTO,
 } from "../../../../packages/shared/src/api.ts";
 import type { MacroGoals, Profile } from "../../../../packages/shared/src/goals.ts";
 import type { MealTypeCode } from "../../../../packages/shared/src/meals.ts";
@@ -62,6 +62,24 @@ export const api = {
   updateFast: (id: string, b: { startedAt?: number; endedAt?: number; note?: string | null }) =>
     request<FastingLogDTO>("PATCH", `/fasting/logs/${id}`, b),
   deleteFast: (id: string) => request<void>("DELETE", `/fasting/logs/${id}`),
+
+  snapStatus: () => request<VisionStatusDTO>("GET", "/snap/status"),
+  snaps: () => request<SnapImageDTO[]>("GET", "/snap?limit=24"),
+  snap: (id: string) => request<SnapImageDTO>("GET", `/snap/${id}`),
+  uploadSnap: async (image: Blob, meta: { mealType?: MealTypeCode; mealName?: string; capturedAt?: number }) => {
+    const form = new FormData();
+    form.set("image", image, "meal.jpg");
+    if (meta.mealType) form.set("mealType", meta.mealType);
+    if (meta.mealName) form.set("mealName", meta.mealName);
+    if (meta.capturedAt) form.set("capturedAt", String(meta.capturedAt));
+    const res = await fetch("/api/snap", { method: "POST", body: form });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(res.status, (data && data.error) || `Upload failed (${res.status})`);
+    return data as SnapImageDTO;
+  },
+  retrySnap: (id: string) => request<SnapImageDTO>("POST", `/snap/${id}/retry`),
+  trackSnap: (id: string, b: SnapTrackBody) => request<FoodLogDTO[]>("POST", `/snap/${id}/track`, b),
+  deleteSnap: (id: string) => request<void>("DELETE", `/snap/${id}`),
 
   settings: (date: string) => request<SettingsDTO>("GET", `/settings${q({ date })}`),
   saveGoals: (goals: MacroGoals, effectiveFrom: string) => request<SettingsDTO>("PUT", "/settings/goals", { ...goals, effectiveFrom }),

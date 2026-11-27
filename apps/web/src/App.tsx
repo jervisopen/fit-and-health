@@ -10,6 +10,8 @@ import { GoalsPage } from "./features/settings/GoalsPage.tsx";
 import { MealsPage } from "./features/settings/MealsPage.tsx";
 import { ComingSoon } from "./features/ComingSoon.tsx";
 import { FastingPage } from "./features/fasting/FastingPage.tsx";
+import { SnapPage } from "./features/snap/SnapPage.tsx";
+import { SnapReviewPage } from "./features/snap/SnapReviewPage.tsx";
 
 export function App() {
   return (
@@ -17,12 +19,13 @@ export function App() {
       <Route element={<AppShell />}>
         <Route index element={<DiaryPage />} />
         <Route path="fasting" element={<FastingPage />} />
-        <Route path="snap" element={<ComingSoon title="Snap" module="Module 4" text="Photograph your plate, confirm the detected foods and portions, log in one tap." />} />
+        <Route path="snap" element={<SnapPage />} />
         <Route path="foods" element={<MyFoodsPage />} />
         <Route path="me" element={<SettingsPage />} />
       </Route>
       <Route path="add" element={<AddFoodPage />} />
       <Route path="nutrients" element={<NutrientsPage />} />
+      <Route path="snap/:id" element={<SnapReviewPage />} />
       <Route path="foods/new" element={<CustomFoodPage />} />
       <Route path="foods/edit/:id" element={<CustomFoodPage />} />
       <Route path="me/goals" element={<GoalsPage />} />
