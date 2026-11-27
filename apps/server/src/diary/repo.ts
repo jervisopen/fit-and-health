@@ -62,7 +62,7 @@ export function getSettings(db: Db, today: string): SettingsDTO {
   return { goals, goalsAreDefault: isDefault, meals: mealSettingsFor(db, today), profile: getProfile(db) };
 }
 
-// ── Food logs (nutrients are snapshotted at log time, like HealthifyMe's foodlog) ────────────
+// ── Food logs (nutrients are snapshotted at log time, so later food edits don't change history) ──
 
 function toLog(r: Record<string, unknown>): FoodLogDTO {
   const nutrients: NutrientValues = {};

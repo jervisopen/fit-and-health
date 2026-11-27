@@ -48,7 +48,7 @@ export function isVegDish(name: string): boolean {
   return !NON_VEG.test(normalize(name));
 }
 
-/** 0..1 relevance per meal slot, mirroring HealthifyMe's food_relevance_* columns. */
+/** 0..1 relevance per meal slot (breakfast, lunch, snack, dinner), used to rank search results. */
 export function mealRelevance(name: string, category?: string) {
   const n = normalize(name);
   const isBreakfast = BREAKFAST.test(n);

@@ -1,10 +1,9 @@
 /**
  * Intermittent fasting model.
  *
- * Recovered from HealthifyMe (docs/BLUEPRINT.md §3): a plan is a daily schedule
- * (fasting_starts_at / fasting_ends_at as minutes of day); fasts are auto-tracked from it, and
- * starting or ending early writes an override log. States: FASTING ↔ EATING; each fast is goal met or not.
- * Added here: a manual stopwatch mode, presets, metabolic stages and streaks.
+ * A plan is a daily schedule (fast start and end as minutes of the day); fasts are auto-tracked
+ * from it, and starting or ending early writes an override log. States: FASTING ↔ EATING; each
+ * fast is goal met or not. There's also a manual stopwatch mode, presets, metabolic stages and streaks.
  */
 import { addDaysIso, dateInZone, HOUR, MINUTE, zonedTimeToMs } from "./time.ts";
 

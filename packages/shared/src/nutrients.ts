@@ -2,7 +2,7 @@
  * Nutrient registry: the single source of truth for every nutrient column.
  *
  * - `key` is the column name in `foods` (values per 100 g) and in `food_logs` (values for the
- *   logged amount, snapshotted at log time like HealthifyMe's `foodlog`).
+ *   logged amount, snapshotted at log time).
  * - Source mappings convert each dataset's native unit into `unit`.
  *     IFCT 2017 (nodef packaging): masses in g per 100 g, energy in kJ.
  *     INDB (Anuvaad 2024.11):       per 100 g, units in the column suffix (_g, _mg, _ug, _kcal).

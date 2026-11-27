@@ -29,8 +29,6 @@ no download, and your diary stays on your phone. Prefer your own server? Self-ho
   inside the browser. Nothing is sold, shared or "personalized". Back it up to a file whenever you like.
 - **Installs like an app.** Add it to your phone's home screen and it works fully offline.
 
-See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design.
-
 fit&health is an independent open-source project. It is not affiliated with or endorsed by any
 commercial nutrition app, and it ships none of their code or data. Nutrition values come from public
 datasets and are estimates; this is not medical advice.
@@ -42,8 +40,7 @@ a Web Worker on [SQLite WebAssembly](https://sqlite.org/wasm) stored in the brow
 system (OPFS). On first visit it downloads about 2 MB of public food data straight from the
 datasets' own public copies and builds the food database on the device. Nothing else leaves the
 device except barcode lookups (Open Food Facts) and Snap photos, which go directly to the vision
-provider whose key you entered. Host it for free on any static host (see
-[Deploy the website](#deploy-the-website-free)).
+provider whose key you entered. It's plain static files, so any static host can serve it.
 
 Data lives in one browser on one device. Use **Me → Your data → Back up** for a file you can
 **Restore** on another phone or browser. Backups leave out your Snap AI key. The app also keeps
@@ -56,31 +53,6 @@ the home screen also stops the browser from clearing its storage when space runs
 **2. Self-hosted server.** The same API on Node.js with `node:sqlite`, for a home server or a
 family that wants one shared diary. Needs Node.js 24+. See [Food database](#food-database) and
 [Running the server](#running-the-server).
-
-## Deploy the website (free)
-
-The site is plain static files (`apps/web/dist`), so any static host works. With
-[Cloudflare Pages](https://pages.cloudflare.com/) (free plan, unlimited bandwidth):
-
-1. Push this repository to GitHub.
-2. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**, then
-   pick the repository.
-3. Build settings:
-   | Setting | Value |
-   |---|---|
-   | Framework preset | None |
-   | Build command | `npm run build` |
-   | Build output directory | `apps/web/dist` |
-   | Production branch | `main` |
-   Node 24 is picked up from `.nvmrc`. If the build uses an older Node, add the environment
-   variable `NODE_VERSION` = `24`.
-4. **Save and Deploy**. The site goes live at `https://<project-name>.pages.dev`, and every push to
-   `main` redeploys it.
-
-A custom domain is optional: **Custom domains** on the Pages project. `apps/web/public/_headers` sets
-security and caching headers. Without a `404.html`, Pages already serves `index.html` for app routes.
-
-To try the production build locally: `npm run build && npm run preview --workspace=apps/web`.
 
 ## Food database
 

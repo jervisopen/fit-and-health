@@ -23,8 +23,7 @@ const UNIT_PICKS = [0.5, 1, 1.5, 2, 3];
 const GRAM_PICKS = [50, 100, 150, 200, 250];
 
 /**
- * Unit chips + quantity stepper + live nutrition. Shared by the diary, add-food and Snap flows
- * (the reference app's FoodMeasureWeight picker).
+ * Unit chips + quantity stepper + live nutrition. Shared by the diary, add-food and Snap flows.
  */
 export function PortionEditor({ food, value, onChange }: { food: FoodDetailDTO; value: Portion; onChange: (p: Portion) => void }) {
   const { measure, weightG, nutrients } = useMemo(() => portionNutrients(food, value), [food, value]);

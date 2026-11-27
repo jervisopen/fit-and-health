@@ -1,6 +1,6 @@
 /**
  * Turn a detected item ("chapati", 2 × chapati, ~72 g) into a database food plus a portion
- * in one of that food's units, the way the reference app maps RecognizedFood → foodlog.
+ * in one of that food's units, ready to log.
  */
 import type { Db } from "../db/types.ts";
 import type { MeasureDTO } from "../../../../packages/shared/src/api.ts";

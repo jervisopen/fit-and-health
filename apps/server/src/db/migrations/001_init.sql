@@ -1,9 +1,9 @@
 -- 001_init: food master, diary, fasting and snap tables.
--- Mirrors the structure recovered from HealthifyMe (docs/BLUEPRINT.md §1–3).
+-- Food database, diary logs and settings.
 -- Food ids are stable text ids ("ifct:A019", "indb:ASC001", "off:<barcode>", "custom:<uuid>")
 -- so rebuilding the food database never breaks diary references.
 
--- ── Food master (≈ foods / foodnames_v2 / foodmeasuretoweightmaps) ──────────────────────────
+-- ── Foods, their names and their household measures ───────────────────────────────────────
 CREATE TABLE foods (
   id                TEXT PRIMARY KEY,
   source            TEXT NOT NULL CHECK (source IN ('ifct','indb','off','custom')),
@@ -35,7 +35,7 @@ CREATE TABLE foods (
 CREATE INDEX idx_foods_source ON foods(source);
 CREATE UNIQUE INDEX idx_foods_barcode ON foods(barcode) WHERE barcode IS NOT NULL;
 
--- Many names per food: display name, local-language names, aliases (≈ foodnames_v2).
+-- Many names per food: display name, local-language names, aliases.
 CREATE TABLE food_names (
   id          INTEGER PRIMARY KEY,
   food_id     TEXT NOT NULL REFERENCES foods(id) ON DELETE CASCADE,
@@ -85,7 +85,7 @@ CREATE INDEX idx_food_measures_food ON food_measures(food_id);
 
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
--- ── Diary (≈ foodlog: nutrients are snapshotted at log time) ─────────────────────────────────
+-- ── Diary (nutrients are snapshotted at log time) ───────────────────────────────────────────
 CREATE TABLE food_logs (
   id            TEXT PRIMARY KEY,
   diary_date    TEXT NOT NULL,                 -- YYYY-MM-DD (local)

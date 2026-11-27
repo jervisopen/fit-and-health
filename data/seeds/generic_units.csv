@@ -7,4 +7,4 @@ gen:small_katori,small katori,100,,40,1,common small steel katori
 gen:katori,katori,150,,41,1,standard steel katori
 gen:bowl,bowl,250,,42,1,
 gen:cup,cup,240,,43,0,INDB Units.xlsx: 1 cup = 240 ml
-gen:glass,glass,250,,44,0,HealthifyMe: 1 Glass (250 ml)
+gen:glass,glass,250,,44,0,1 glass = 250 ml

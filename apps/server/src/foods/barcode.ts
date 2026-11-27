@@ -1,6 +1,6 @@
 /**
- * Barcode lookup: local database first, then Open Food Facts live (like HealthifyMe's
- * food_from_barcode). Found products are cached as `off:<barcode>` foods.
+ * Barcode lookup: local database first, then Open Food Facts live.
+ * Found products are cached as `off:<barcode>` foods.
  */
 import type { Db } from "../db/types.ts";
 import type { FoodDetailDTO } from "../../../../packages/shared/src/api.ts";

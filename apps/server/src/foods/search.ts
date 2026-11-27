@@ -1,7 +1,5 @@
 /**
- * Food search, modelled on HealthifyMe's local search
- * (LIKE on foodnames_v2.food_name / canonical_food_name, ordered by food_rank and
- * food_relevance_<meal>), upgraded to FTS5 + trigram fuzzy matching.
+ * Food search, local and offline: FTS5 full-text plus trigram fuzzy matching over every food name.
  *
  * score = text match + source prior (foods.rank) + meal-slot relevance + personal frequency
  */

@@ -83,7 +83,7 @@ export function endPlan(db: Db, now: number) {
 
 /**
  * Write auto-tracked fasts for scheduled windows that finished without an override
- * (like HealthifyMe, the schedule is assumed kept unless you start or end early),
+ * (the schedule is assumed kept unless you start or end early),
  * and close schedule fasts started early once their scheduled end passes.
  */
 export function settle(db: Db, now: number) {

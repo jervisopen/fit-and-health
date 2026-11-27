@@ -9,7 +9,7 @@ const MACRO_COLORS: Partial<Record<NutrientKey, string>> = {
   protein_g: "var(--protein)", carbs_g: "var(--carbs)", fat_g: "var(--fat)", fibre_g: "var(--fibre)",
 };
 
-/** Every tracked nutrient for one day (the reference app's micronutrient card, without paywall). */
+/** Every tracked nutrient for one day, all of them free to see. */
 export function NutrientsPage() {
   const [params] = useSearchParams();
   const raw = params.get("date");

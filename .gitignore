@@ -13,3 +13,6 @@ data/raw/
 # Reverse-engineering evidence and the vendor APK are never committed
 _re/
 *.apk
+
+# Design notes kept on this computer only
+docs/BLUEPRINT.md
