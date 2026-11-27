@@ -71,8 +71,10 @@ export function TrackersPage() {
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)}
-      className={cx("relative h-7 w-12 shrink-0 rounded-full transition-colors", checked ? "bg-brand" : "bg-line")}>
-      <span className={cx("absolute top-0.5 h-6 w-6 rounded-full bg-surface shadow transition-transform", checked ? "translate-x-[22px]" : "translate-x-0.5")} />
+      className={cx("relative block h-7 w-12 shrink-0 rounded-full transition-colors", checked ? "bg-brand" : "bg-ink-3/40")}>
+      {/* Anchored to the left edge; slides 20px (track 48px, knob 24px, 2px inset each side). */}
+      <span aria-hidden="true" className={cx("absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform",
+        checked ? "translate-x-5" : "translate-x-0")} />
     </button>
   );
 }
