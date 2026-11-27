@@ -1,0 +1,12 @@
+// Cloudflare Workers static-assets deploy (Workers Builds runs `npm run build`, then `npx wrangler deploy`).
+// No Worker script: Cloudflare serves the built PWA directly. `_headers` in apps/web/public still applies.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fit-and-health",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./apps/web/dist",
+    // App routes like /fasting or /me/snap-ai load index.html; the router takes it from there.
+    "not_found_handling": "single-page-application"
+  }
+}
