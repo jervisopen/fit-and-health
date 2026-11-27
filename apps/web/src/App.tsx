@@ -10,7 +10,7 @@ import { GoalsPage } from "./features/settings/GoalsPage.tsx";
 import { MealsPage } from "./features/settings/MealsPage.tsx";
 import { SnapAiPage } from "./features/settings/SnapAiPage.tsx";
 import { SetupGate } from "./features/setup/SetupGate.tsx";
-import { TrackerPage } from "./features/trackers/TrackerPage.tsx";
+import { TrackerRoute } from "./features/trackers/TrackerPage.tsx";
 import { TrackersPage } from "./features/trackers/TrackersPage.tsx";
 import { ComingSoon } from "./features/ComingSoon.tsx";
 import { FastingPage } from "./features/fasting/FastingPage.tsx";
@@ -37,7 +37,7 @@ export function App() {
       <Route path="me/meals" element={<MealsPage />} />
       <Route path="me/snap-ai" element={<SnapAiPage />} />
       <Route path="trackers" element={<TrackersPage />} />
-      <Route path="trackers/:kind" element={<TrackerPage />} />
+      <Route path="trackers/:kind" element={<TrackerRoute />} />
       <Route path="*" element={<ComingSoon title="Not found" text="This page doesn't exist." />} />
     </Routes>
     </SetupGate>

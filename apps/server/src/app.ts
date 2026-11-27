@@ -24,9 +24,13 @@ import { DbBlobStore, type BlobStore } from "./snap/storage.ts";
 import { VisionConfigError } from "./snap/vision/types.ts";
 import {
   addWater, addWorkout, deleteSleep, deleteWater, deleteWeight, deleteWorkout, getTrackerSettings, setSleep, setWeight,
-  recentActivities, trackerDay, trackerHistory, updateTrackerSettings, updateWorkout,
+  deleteSteps, recentActivities, setSteps, trackerDay, trackerHistory, updateTrackerSettings, updateWorkout,
 } from "./trackers/repo.ts";
 import { ACTIVITIES } from "../../../packages/shared/src/trackers.ts";
+import {
+  addGlucose, addVital, adherence, createMedicine, deleteDose, deleteGlucose, deleteMedicine, deleteVital, glucoseBetween,
+  listMedicines, medicineDay, medicinesIcs, recordDose, updateMedicine, vitalsBetween,
+} from "./trackers/health.ts";
 
 
 // ── Validation ──────────────────────────────────────────────────────────────────────────────
@@ -109,6 +113,7 @@ const schemas = {
     kcal: z.number().min(0).max(10_000).optional(),
     note: z.string().max(200).nullable().optional(),
   }),
+  steps: z.object({ steps: z.number().int().min(0).max(200_000) }),
   sleep: z.object({
     bedAt: epochMs,
     wakeAt: epochMs,
@@ -119,7 +124,47 @@ const schemas = {
     water: z.object({ enabled: z.boolean(), goalMl: z.number().int().min(500).max(8000).nullable(), glassMl: z.number().int().min(50).max(1000) }).partial().optional(),
     weight: z.object({ enabled: z.boolean(), goalKg: z.number().min(20).max(400).nullable(), heightCm: z.number().min(100).max(250).nullable() }).partial().optional(),
     workout: z.object({ enabled: z.boolean(), goalMin: z.number().int().min(5).max(600), addToBudget: z.boolean() }).partial().optional(),
+    steps: z.object({ enabled: z.boolean(), goal: z.number().int().min(500).max(50_000) }).partial().optional(),
     sleep: z.object({ enabled: z.boolean(), goalMin: z.number().int().min(180).max(900) }).partial().optional(),
+    glucose: z.object({ enabled: z.boolean(), unit: z.enum(["mg/dL", "mmol/L"]) }).partial().optional(),
+    medicine: z.object({ enabled: z.boolean() }).partial().optional(),
+    heart: z.object({ enabled: z.boolean() }).partial().optional(),
+    breathing: z.object({ enabled: z.boolean() }).partial().optional(),
+  }),
+  glucose: z.object({
+    date: isoDate,
+    measuredAt: epochMs,
+    value: z.number().positive().max(1000),
+    unit: z.enum(["mg/dL", "mmol/L"]),
+    tag: z.enum(["fasting", "before_meal", "after_meal", "random", "bedtime"]),
+    mealType: mealType.nullable().optional(),
+    note: z.string().max(200).nullable().optional(),
+  }),
+  vital: z.object({
+    kind: z.enum(["heart", "breathing"]),
+    date: isoDate,
+    measuredAt: epochMs,
+    value: z.number().positive().max(300),
+    context: z.enum(["resting", "after_activity", "other"]),
+    note: z.string().max(200).nullable().optional(),
+  }),
+  medicine: z.object({
+    name: z.string().trim().min(1).max(80),
+    dose: z.string().trim().max(60).nullable().optional(),
+    times: z.array(z.number().int().min(0).max(1439)).max(12),
+    days: z.array(z.number().int().min(0).max(6)).max(7).nullable().optional(),
+    asNeeded: z.boolean(),
+    startDate: isoDate,
+    endDate: isoDate.nullable().optional(),
+    notes: z.string().max(300).nullable().optional(),
+    timezone: z.string().refine(isValidTimeZone, "Unknown time zone"),
+    active: z.boolean().optional(),
+  }),
+  dose: z.object({
+    medicineId: z.string().min(1),
+    date: isoDate,
+    timeMin: z.number().int().min(0).max(1439).nullable(),
+    status: z.enum(["taken", "skipped"]),
   }),
   snapTrack: z.object({
     date: isoDate,
@@ -269,6 +314,40 @@ export function createApp({ db, offFetcher, clock = Date.now, env = {}, browser 
   app.post("/workouts", async (c) => c.json(addWorkout(db, await body(c, schemas.workout), clock()), 201));
   app.patch("/workouts/:id", async (c) => c.json(updateWorkout(db, c.req.param("id"), await body(c, schemas.workoutPatch))));
   app.delete("/workouts/:id", (c) => { deleteWorkout(db, c.req.param("id")); return c.body(null, 204); });
+  app.put("/steps/:date", async (c) => {
+    const date = param(isoDate, c.req.param("date"), "date");
+    setSteps(db, date, (await body(c, schemas.steps)).steps, clock());
+    return c.json(trackerDay(db, date).steps);
+  });
+  app.delete("/steps/:date", (c) => { deleteSteps(db, param(isoDate, c.req.param("date"), "date")); return c.body(null, 204); });
+  const range = (c: Context) => {
+    const from = param(isoDate, c.req.query("from"), "from");
+    const to = param(isoDate, c.req.query("to"), "to");
+    if (from > to) throw new ValidationError("from must be on or before to");
+    if (Date.parse(to) - Date.parse(from) > 400 * 86_400_000) throw new ValidationError("At most 400 days at a time");
+    return { from, to };
+  };
+  app.get("/glucose", (c) => { const r = range(c); return c.json(glucoseBetween(db, r.from, r.to)); });
+  app.post("/glucose", async (c) => c.json(addGlucose(db, await body(c, schemas.glucose)), 201));
+  app.delete("/glucose/:id", (c) => { deleteGlucose(db, c.req.param("id")); return c.body(null, 204); });
+  app.get("/vitals", (c) => {
+    const r = range(c);
+    return c.json(vitalsBetween(db, param(z.enum(["heart", "breathing"]), c.req.query("kind"), "kind"), r.from, r.to));
+  });
+  app.post("/vitals", async (c) => c.json(addVital(db, await body(c, schemas.vital)), 201));
+  app.delete("/vitals/:id", (c) => { deleteVital(db, c.req.param("id")); return c.body(null, 204); });
+  app.get("/medicines", (c) => c.json(listMedicines(db)));
+  app.post("/medicines", async (c) => c.json(createMedicine(db, await body(c, schemas.medicine), clock()), 201));
+  app.get("/medicines/reminders.ics", (c) => c.body(medicinesIcs(db, clock()), 200, {
+    "content-type": "text/calendar; charset=utf-8",
+    "content-disposition": 'attachment; filename="medicine-reminders.ics"',
+  }));
+  app.get("/medicines/day/:date", (c) => c.json(medicineDay(db, param(isoDate, c.req.param("date"), "date"))));
+  app.get("/medicines/adherence", (c) => { const r = range(c); return c.json(adherence(db, r.from, r.to)); });
+  app.post("/medicines/doses", async (c) => c.json(recordDose(db, await body(c, schemas.dose), clock()), 201));
+  app.delete("/medicines/doses/:id", (c) => { deleteDose(db, c.req.param("id")); return c.body(null, 204); });
+  app.put("/medicines/:id", async (c) => c.json(updateMedicine(db, c.req.param("id"), await body(c, schemas.medicine))));
+  app.delete("/medicines/:id", (c) => { deleteMedicine(db, c.req.param("id"), clock()); return c.body(null, 204); });
   app.put("/sleep/:date", async (c) => c.json(setSleep(db, param(isoDate, c.req.param("date"), "date"), await body(c, schemas.sleep))));
   app.delete("/sleep/:date", (c) => { deleteSleep(db, param(isoDate, c.req.param("date"), "date")); return c.body(null, 204); });
 

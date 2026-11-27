@@ -9,6 +9,9 @@ import { addDays, shortDate, today } from "../../lib/dates.ts";
 import { useInvalidateTrackers } from "../../lib/queries.ts";
 import { glassesOf, hoursMinutes, litres, plural, TRACKER_META } from "./meta.tsx";
 import { SleepSheet, WeightSheet, WorkoutSheet } from "./sheets.tsx";
+import { DosesSheet, GlucoseSheet, StepsSheet, VitalSheet } from "./healthSheets.tsx";
+import { glucoseIn, glucoseTagLabel, VITALS } from "../../../../../packages/shared/src/health.ts";
+import { MEAL_TYPES } from "../../../../../packages/shared/src/meals.ts";
 
 /** Diary card: today's water, weight, workout and sleep, each one tap from logging. */
 export function TrackersCard({ day }: { day: TrackerDayDTO }) {
@@ -53,6 +56,15 @@ export function TrackersCard({ day }: { day: TrackerDayDTO }) {
     onAdd: () => setSheet("workout"),
     addLabel: "Add workout",
   });
+  if (s.steps.enabled) rows.push({
+    kind: "steps",
+    detail: day.steps.steps !== null
+      ? <>{day.steps.steps.toLocaleString()} of {day.steps.goal.toLocaleString()} steps · {day.steps.km} km · {day.steps.kcal} kcal</>
+      : <>Goal {day.steps.goal.toLocaleString()} steps</>,
+    progress: (day.steps.steps ?? 0) / day.steps.goal,
+    onAdd: () => setSheet("steps"),
+    addLabel: "Enter steps",
+  });
   if (s.sleep.enabled) rows.push({
     kind: "sleep",
     detail: day.sleep.entry ? <>{hoursMinutes(day.sleep.entry.minutes)} of {hoursMinutes(day.sleep.goalMin)}</> : "Not logged",
@@ -60,6 +72,39 @@ export function TrackersCard({ day }: { day: TrackerDayDTO }) {
     onAdd: () => setSheet("sleep"),
     addLabel: day.sleep.entry ? "Edit sleep" : "Log sleep",
   });
+
+  if (s.glucose.enabled) {
+    const last = day.glucose.readings.at(-1);
+    const meal = last?.mealType ? MEAL_TYPES.find((m) => m.code === last.mealType)?.name.toLowerCase() : null;
+    rows.push({
+      kind: "glucose",
+      detail: last
+        ? <>{glucoseIn(last.mgdl, day.glucose.unit)} {day.glucose.unit} · {last.tag === "after_meal" && meal ? `after ${meal}` : last.tag === "before_meal" && meal ? `before ${meal}` : glucoseTagLabel(last.tag).toLowerCase()}{day.glucose.readings.length > 1 ? ` · ${day.glucose.readings.length} readings` : ""}</>
+        : "No readings",
+      onAdd: () => setSheet("glucose"),
+      addLabel: "Add a glucose reading",
+    });
+  }
+  if (s.medicine.enabled) {
+    const md = day.medicine;
+    rows.push({
+      kind: "medicine",
+      detail: md.scheduled ? <>{md.taken} of {md.scheduled} doses taken</> : md.doses.length ? <>{plural(md.doses.length, "dose")} logged</> : "Nothing due",
+      progress: md.scheduled ? md.taken / md.scheduled : undefined,
+      onAdd: () => setSheet("medicine"),
+      addLabel: "Today's medicines",
+    });
+  }
+  for (const k of ["heart", "breathing"] as const) {
+    if (!s[k].enabled) continue;
+    const last = day[k].readings.at(-1);
+    rows.push({
+      kind: k,
+      detail: last ? <>{last.value} {VITALS[k].unit}{last.context === "resting" ? " · resting" : ""}</> : "No readings",
+      onAdd: () => setSheet(k),
+      addLabel: `Add ${VITALS[k].title.toLowerCase()}`,
+    });
+  }
 
   return (
     <Card>
@@ -89,7 +134,7 @@ export function TrackersCard({ day }: { day: TrackerDayDTO }) {
         })}
         <li>
           <Link to="/trackers" className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-brand">
-            <span className="flex-1">{rows.length ? "Track more" : "Turn on trackers: water, weight, workout, sleep"}</span>
+            <span className="flex-1">{rows.length ? "Track more" : "Turn on trackers: water, weight, steps, sleep and more"}</span>
             <ChevronRight size={18} />
           </Link>
         </li>
@@ -97,6 +142,11 @@ export function TrackersCard({ day }: { day: TrackerDayDTO }) {
       <WeightSheet open={sheet === "weight"} onClose={() => setSheet(null)} day={day} />
       <WorkoutSheet open={sheet === "workout"} onClose={() => setSheet(null)} day={day} />
       <SleepSheet open={sheet === "sleep"} onClose={() => setSheet(null)} day={day} />
+      <StepsSheet open={sheet === "steps"} onClose={() => setSheet(null)} day={day} />
+      <GlucoseSheet open={sheet === "glucose"} onClose={() => setSheet(null)} day={day} />
+      <DosesSheet open={sheet === "medicine"} onClose={() => setSheet(null)} day={day} />
+      <VitalSheet kind="heart" open={sheet === "heart"} onClose={() => setSheet(null)} day={day} />
+      <VitalSheet kind="breathing" open={sheet === "breathing"} onClose={() => setSheet(null)} day={day} />
     </Card>
   );
 }

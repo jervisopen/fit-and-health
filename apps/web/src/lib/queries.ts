@@ -23,6 +23,7 @@ export function useInvalidateTrackers() {
   return () => Promise.all([
     qc.invalidateQueries({ queryKey: ["trackers"] }),
     qc.invalidateQueries({ queryKey: ["tracker-history"] }),
+    qc.invalidateQueries({ queryKey: ["health-log"] }),
     qc.invalidateQueries({ queryKey: keys.settings }),
   ]);
 }

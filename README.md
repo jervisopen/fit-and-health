@@ -20,9 +20,11 @@ no download, and your diary stays on your phone. Prefer your own server? Self-ho
   cost, or nothing at all.
 - **Intermittent fasting.** Daily schedules or a simple timer, metabolic stages, streaks, history
   and calendar reminders.
-- **Water, weight, workout and sleep.** Tap to add a glass, log weigh-ins against a healthy range
-  for Indian adults, pick from 35 activities (yoga, cricket, brisk walking…) for calorie estimates,
-  and log your nights. Charts for each, and workout calories can count toward your food budget.
+- **Water, weight, workout, steps and sleep.** Tap to add a glass, log weigh-ins against a healthy
+  range for Indian adults, pick from 35 activities (yoga, cricket, brisk walking…) for calorie
+  estimates, enter your steps for distance and calories, and log your nights. Charts for each.
+- **Health logs.** Blood glucose (mg/dL or mmol/L, tagged to meals), medicines with a daily
+  checklist and calendar reminders, heart rate and breathing rate. Opt-in, and never a diagnosis.
 - **No ads, no tracking, no account.** Your diary lives on your device, in a real SQLite database
   inside the browser. Nothing is sold, shared or "personalized". Back it up to a file whenever you like.
 - **Installs like an app.** Add it to your phone's home screen and it works fully offline.
@@ -158,8 +160,20 @@ On Android Chrome, the Snap tab can also scan barcodes with the camera.
 - **Workout:** calories = MET × weight × hours, with MET values from the Compendium of Physical
   Activities (2011). Only the part above resting (MET − 1) is added to the food budget, and only if
   you switch that on. Calories from a watch can be typed in instead.
+- **Steps:** typed in (a website can't read the phone's step counter). Distance uses step length
+  ≈ 41% of height; calories treat the steps as walking at ~5 km/h. Default goal 8,000.
 - **Sleep:** bedtime and wake-up for the night ending on a date; 7–9 h is the adult guideline.
-- Steps, blood glucose, medicine, heart rate and breathing rate are planned next.
+
+Health logs (off by default; switch them on under Diary → Track more):
+
+- **Blood glucose:** stored in mg/dL, shown in either unit. Readings are compared with the usual
+  ranges for adults without diabetes (ADA: fasting < 100, 2 h after eating < 140 mg/dL, low < 70).
+  People with diabetes usually have their own targets.
+- **Medicines:** times, weekdays, start and end dates, or "as needed". There's a daily Taken/Skip
+  checklist with undo, an adherence chart, and an `.ics` file that puts reminders in the phone's
+  calendar, so they ring even when the app is closed.
+- **Heart rate and breathing rate:** manual readings with context; resting readings are compared
+  with 60–100 bpm and 12–20 breaths a minute.
 
 ## Development
 

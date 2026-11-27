@@ -1,21 +1,32 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { bmi, suggestedWaterMl, TRACKER_KINDS, type TrackerDayDTO, type TrackerHistoryDayDTO, type TrackerKind, type WorkoutDTO } from "../../../../../packages/shared/src/trackers.ts";
+import { bmi, suggestedWaterMl, type TrackerDayDTO, type TrackerHistoryDayDTO, type WorkoutDTO } from "../../../../../packages/shared/src/trackers.ts";
 import { BarChart, LineChart } from "../../components/charts.tsx";
 import { Button, Card, cx, ErrorNote, IconButton, PageHeader, Spinner } from "../../components/ui.tsx";
 import { useToast } from "../../components/Toast.tsx";
 import { api } from "../../lib/api.ts";
 import { addDays, isValidIso, today } from "../../lib/dates.ts";
 import { useInvalidateTrackers, useTrackerDay, useTrackerHistory } from "../../lib/queries.ts";
-import { clock, dayLabel, glassesOf, hoursMinutes, litres, TRACKER_META } from "./meta.tsx";
+import { clock, DAILY_KINDS, dayLabel, glassesOf, hoursMinutes, litres, TRACKER_META, type DailyKind } from "./meta.tsx";
 import { QUALITY_LABELS, SleepSheet, WeightSheet, WorkoutSheet } from "./sheets.tsx";
+import { StepsSheet } from "./healthSheets.tsx";
+import { GlucosePage, MedicinePage, VitalPage } from "./HealthPages.tsx";
 
-const RANGES: Record<TrackerKind, number[]> = { water: [7, 30], workout: [7, 30], sleep: [7, 30], weight: [30, 90, 365] };
+const RANGES: Record<DailyKind, number[]> = { water: [7, 30], workout: [7, 30], steps: [7, 30], sleep: [7, 30], weight: [30, 90, 365] };
+
+/** /trackers/:kind → the right page. */
+export function TrackerRoute() {
+  const { kind } = useParams();
+  if (kind === "glucose") return <GlucosePage />;
+  if (kind === "medicine") return <MedicinePage />;
+  if (kind === "heart" || kind === "breathing") return <VitalPage kind={kind} />;
+  return <TrackerPage />;
+}
 
 export function TrackerPage() {
   const { kind: raw } = useParams();
-  const kind = TRACKER_KINDS.includes(raw as TrackerKind) ? (raw as TrackerKind) : null;
+  const kind = DAILY_KINDS.includes(raw as DailyKind) ? (raw as DailyKind) : null;
   const [params] = useSearchParams();
   const date = isValidIso(params.get("date")) ? params.get("date")! : today();
   const day = useTrackerDay(date);
@@ -60,6 +71,7 @@ export function TrackerPage() {
       </div>
       {d && kind === "weight" && <WeightSheet open={sheet === "add"} onClose={() => setSheet(null)} day={d} />}
       {d && kind === "sleep" && <SleepSheet open={sheet === "add"} onClose={() => setSheet(null)} day={d} />}
+      {d && kind === "steps" && <StepsSheet open={sheet === "add"} onClose={() => setSheet(null)} day={d} />}
       {d && kind === "workout" && (
         <WorkoutSheet open={sheet !== null} onClose={() => setSheet(null)} day={d} editing={typeof sheet === "object" ? sheet : null} />
       )}
@@ -67,7 +79,7 @@ export function TrackerPage() {
   );
 }
 
-function Today({ kind, day, onAdd, onEditWorkout }: { kind: TrackerKind; day: TrackerDayDTO; onAdd: () => void; onEditWorkout: (w: WorkoutDTO) => void }) {
+function Today({ kind, day, onAdd, onEditWorkout }: { kind: DailyKind; day: TrackerDayDTO; onAdd: () => void; onEditWorkout: (w: WorkoutDTO) => void }) {
   const invalidate = useInvalidateTrackers();
   const toast = useToast();
   const m = TRACKER_META[kind];
@@ -90,7 +102,7 @@ function Today({ kind, day, onAdd, onEditWorkout }: { kind: TrackerKind; day: Tr
         <p className="text-sm text-ink-2">{glassesOf(day.water.ml, day.water.glassMl)} of {glassesOf(day.water.goalMl, day.water.glassMl)} glasses ({day.water.glassMl} ml)</p>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: m.color }} /></div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button className="h-10 bg-water text-white" onClick={() => void addWater(day.water.glassMl)}><Plus size={18} /> 1 glass</Button>
+          <Button className="h-10 bg-water text-bg" onClick={() => void addWater(day.water.glassMl)}><Plus size={18} /> 1 glass</Button>
           <Button variant="secondary" className="h-10" onClick={() => void addWater(500)}>+ 500 ml</Button>
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const v = Number(customMl); if (v >= 10 && v <= 5000) { void addWater(v); setCustomMl(""); } }}>
             <input type="number" inputMode="numeric" min={10} max={5000} value={customMl} onChange={(e) => setCustomMl(e.target.value)}
@@ -129,6 +141,21 @@ function Today({ kind, day, onAdd, onEditWorkout }: { kind: TrackerKind; day: Tr
           <p className="text-sm text-ink-2">Goal {day.settings.weight.goalKg} kg · {Math.abs(Math.round((cur - day.settings.weight.goalKg) * 10) / 10)} kg to go</p>
         )}
         <Button className="mt-3 h-10" onClick={onAdd}>{w.today ? "Change today's weight" : "Log weight"}</Button>
+      </Card>
+    );
+  }
+
+  if (kind === "steps") {
+    const st = day.steps;
+    const pct = Math.min(100, ((st.steps ?? 0) / st.goal) * 100);
+    return (
+      <Card className="p-4">
+        <p className="text-xs text-ink-3">{when}</p>
+        <p className="num text-3xl font-bold" style={{ color: m.color }}>{(st.steps ?? 0).toLocaleString()}
+          <span className="text-base font-medium text-ink-3"> / {st.goal.toLocaleString()} steps</span></p>
+        <p className="text-sm text-ink-2">{st.km} km · about {st.kcal} kcal burned</p>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: m.color }} /></div>
+        <Button className="mt-3 h-10" onClick={onAdd}>{st.steps === null ? "Enter steps" : "Change steps"}</Button>
       </Card>
     );
   }
@@ -177,7 +204,7 @@ function Today({ kind, day, onAdd, onEditWorkout }: { kind: TrackerKind; day: Tr
   );
 }
 
-function HistoryChart({ kind, day, days }: { kind: TrackerKind; day: TrackerDayDTO; days: TrackerHistoryDayDTO[] }) {
+function HistoryChart({ kind, day, days }: { kind: DailyKind; day: TrackerDayDTO; days: TrackerHistoryDayDTO[] }) {
   const m = TRACKER_META[kind];
   if (kind === "weight") {
     const goal = day.settings.weight.goalKg;
@@ -189,14 +216,15 @@ function HistoryChart({ kind, day, days }: { kind: TrackerKind; day: TrackerDayD
   }
   const series = days.map((x) => ({
     date: x.date,
-    value: kind === "water" ? x.waterMl : kind === "workout" ? x.workoutMin : x.sleepMin,
+    value: kind === "water" ? x.waterMl : kind === "workout" ? x.workoutMin : kind === "steps" ? x.steps : x.sleepMin,
   }));
-  const goal = kind === "water" ? day.water.goalMl : kind === "workout" ? day.workout.goalMin : day.sleep.goalMin;
-  const format = kind === "water" ? litres : kind === "workout" ? (v: number) => `${v} min` : hoursMinutes;
+  const goal = kind === "water" ? day.water.goalMl : kind === "workout" ? day.workout.goalMin : kind === "steps" ? day.steps.goal : day.sleep.goalMin;
+  const format = kind === "water" ? litres : kind === "workout" ? (v: number) => `${v} min`
+    : kind === "steps" ? (v: number) => `${v.toLocaleString()} steps` : hoursMinutes;
   return <BarChart days={series} goal={goal} color={m.color} format={format} today={today()} />;
 }
 
-function Averages({ kind, day, days }: { kind: TrackerKind; day: TrackerDayDTO; days: TrackerHistoryDayDTO[] }) {
+function Averages({ kind, day, days }: { kind: DailyKind; day: TrackerDayDTO; days: TrackerHistoryDayDTO[] }) {
   const stat = (label: string, value: string) => (
     <div className="rounded-xl bg-surface-2 p-2.5"><p className="text-[11px] text-ink-3">{label}</p><p className="num font-semibold">{value}</p></div>
   );
@@ -211,6 +239,12 @@ function Averages({ kind, day, days }: { kind: TrackerKind; day: TrackerDayDTO; 
     const avg = logged.length ? logged.reduce((s, x) => s + x.waterMl, 0) / logged.length : 0;
     const met = days.filter((x) => x.waterMl >= day.water.goalMl).length;
     return <div className="mt-3 grid grid-cols-2 gap-2">{stat("Daily average", logged.length ? litres(Math.round(avg / 50) * 50) : "–")}{stat("Goal reached", `${met} of ${days.length} days`)}</div>;
+  }
+  if (kind === "steps") {
+    const logged = days.filter((x) => x.steps !== null);
+    const avg = logged.length ? logged.reduce((s, x) => s + x.steps!, 0) / logged.length : 0;
+    const met = days.filter((x) => (x.steps ?? 0) >= day.steps.goal).length;
+    return <div className="mt-3 grid grid-cols-2 gap-2">{stat("Daily average", logged.length ? Math.round(avg).toLocaleString() : "–")}{stat("Goal reached", `${met} of ${days.length} days`)}</div>;
   }
   if (kind === "workout") {
     const last7 = days.slice(-7).reduce((s, x) => s + x.workoutMin, 0);
@@ -245,7 +279,7 @@ function WeighIns({ days }: { days: TrackerHistoryDayDTO[] }) {
   );
 }
 
-function GoalCard({ kind, day }: { kind: TrackerKind; day: TrackerDayDTO }) {
+function GoalCard({ kind, day }: { kind: DailyKind; day: TrackerDayDTO }) {
   const invalidate = useInvalidateTrackers();
   const toast = useToast();
   const s = day.settings;
@@ -256,6 +290,7 @@ function GoalCard({ kind, day }: { kind: TrackerKind; day: TrackerDayDTO }) {
     if (kind === "water") { setValue(s.water.goalMl ? String(s.water.goalMl) : ""); setExtra(String(s.water.glassMl)); }
     if (kind === "workout") setValue(String(s.workout.goalMin));
     if (kind === "sleep") setValue(String(s.sleep.goalMin / 60));
+    if (kind === "steps") setValue(String(s.steps.goal));
     if (kind === "weight") { setValue(s.weight.goalKg ? String(s.weight.goalKg) : ""); setExtra(s.weight.heightCm ? String(s.weight.heightCm) : ""); }
   }, [kind, s]);
 
@@ -297,6 +332,14 @@ function GoalCard({ kind, day }: { kind: TrackerKind; day: TrackerDayDTO }) {
           <Button variant="secondary" className="h-10" onClick={() => void save({ workout: { goalMin: Number(value) || 30 } })}>Save goal</Button>
         </>
       )}
+      {kind === "steps" && (
+        <>
+          <Row label="Steps a day" hint="For most adults the health benefits keep growing up to about 8,000–10,000 steps a day. Any increase helps.">
+            <input type="number" inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} className="input" />
+          </Row>
+          <Button variant="secondary" className="h-10" onClick={() => void save({ steps: { goal: Number(value) || 8000 } })}>Save goal</Button>
+        </>
+      )}
       {kind === "sleep" && (
         <>
           <Row label="Hours a night" hint="Most adults need 7–9 hours.">
@@ -334,11 +377,12 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
-function Notes({ kind }: { kind: TrackerKind }) {
-  const text: Record<TrackerKind, string> = {
+function Notes({ kind }: { kind: DailyKind }) {
+  const text: Record<DailyKind, string> = {
     water: "You need more on hot days, when you exercise, and if you're pregnant or breastfeeding. Tea, milk, buttermilk and soups count too. If a doctor has limited your fluids, follow their advice.",
     weight: "BMI 18.5–22.9 is the healthy range used for Indian adults; it's a rough guide and doesn't account for muscle. Day-to-day changes of 1–2 kg are usually water, so look at the trend.",
     workout: "Calories are estimates from published activity energy costs (Compendium of Physical Activities) and your weight. Real burn varies with effort and fitness.",
+    steps: "A website can't read your phone's step counter, so copy the number from your phone's health app or watch. Distance uses your height and calories assume walking pace. If you also logged a walk as a workout, it's counted twice, so log each walk in one place.",
     sleep: "Regular bed and wake times help as much as total hours. If you often feel unrested after a full night, talk to a doctor.",
   };
   return <p className="px-1 text-xs leading-relaxed text-ink-3">{text[kind]} General information, not medical advice.</p>;

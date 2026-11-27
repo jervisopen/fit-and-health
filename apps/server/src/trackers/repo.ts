@@ -3,9 +3,10 @@ import type { Db } from "../db/types.ts";
 import { newId } from "../db/types.ts";
 import { NotFoundError, ValidationError } from "../foods/repo.ts";
 import { getProfile, setProfile } from "../diary/repo.ts";
+import { glucoseBetween, medicineDay, vitalsBetween } from "./health.ts";
 import {
   activity, CUSTOM_ACTIVITY, DEFAULT_TRACKER_SETTINGS, FALLBACK_WEIGHT_KG, healthyWeightRange, mergeTrackerSettings,
-  suggestedWaterMl, workoutKcal, workoutNetKcal,
+  stepsEnergy, suggestedWaterMl, workoutKcal, workoutNetKcal,
   type AddWaterBody, type AddWorkoutBody, type SetSleepBody, type SetWeightBody, type SleepDTO, type TrackerDayDTO,
   type TrackerHistoryDayDTO, type TrackerSettings, type TrackerSettingsPatch, type UpdateWorkoutBody, type WaterEntryDTO,
   type WeightEntryDTO, type WorkoutDTO,
@@ -140,6 +141,21 @@ export function deleteWorkout(db: Db, id: string) {
   if (!r.changes) throw new NotFoundError("Workout not found");
 }
 
+// ── Steps ──
+
+/** The day's total steps (saving again replaces it). */
+export function setSteps(db: Db, date: string, steps: number, now: number): number {
+  db.prepare(`INSERT INTO steps_logs (date, steps, logged_at) VALUES (?, ?, ?)
+              ON CONFLICT (date) DO UPDATE SET steps = excluded.steps, logged_at = excluded.logged_at`)
+    .run(date, Math.round(steps), now);
+  return Math.round(steps);
+}
+
+export function deleteSteps(db: Db, date: string) {
+  const r = db.prepare("DELETE FROM steps_logs WHERE date = ?").run(date) as { changes: number };
+  if (!r.changes) throw new NotFoundError("No steps logged on that date");
+}
+
 // ── Sleep ──
 
 type SleepRow = { date: string; bed_at: number; wake_at: number; quality: number | null; note: string | null };
@@ -176,6 +192,8 @@ export function trackerDay(db: Db, date: string): TrackerDayDTO {
   const workouts = (db.prepare("SELECT * FROM workout_logs WHERE date = ? ORDER BY logged_at").all(date) as WorkoutRow[]).map(workoutDto);
   const todayWeight = db.prepare("SELECT date, kg, note FROM weight_logs WHERE date = ?").get(date) as WeightRow | undefined;
   const sleep = db.prepare("SELECT * FROM sleep_logs WHERE date = ?").get(date) as SleepRow | undefined;
+  const stepsRow = db.prepare("SELECT steps FROM steps_logs WHERE date = ?").get(date) as { steps: number } | undefined;
+  const stepsE = stepsEnergy(stepsRow?.steps ?? 0, currentKg, heightCm ?? null, profile?.sex);
 
   return {
     date,
@@ -200,7 +218,12 @@ export function trackerDay(db: Db, date: string): TrackerDayDTO {
       netKcal: workouts.reduce((s, w) => s + w.netKcal, 0),
       goalMin: settings.workout.goalMin,
     },
+    steps: { steps: stepsRow?.steps ?? null, goal: settings.steps.goal, km: stepsE.km, kcal: stepsE.kcal },
     sleep: { entry: sleep ? sleepDto(sleep) : null, goalMin: settings.sleep.goalMin },
+    glucose: { readings: glucoseBetween(db, date, date), unit: settings.glucose.unit },
+    medicine: medicineDay(db, date),
+    heart: { readings: vitalsBetween(db, "heart", date, date) },
+    breathing: { readings: vitalsBetween(db, "breathing", date, date) },
   };
 }
 
@@ -209,7 +232,7 @@ export function trackerHistory(db: Db, from: string, to: string): TrackerHistory
   const byDate = new Map<string, TrackerHistoryDayDTO>();
   const day = (date: string) => {
     let d = byDate.get(date);
-    if (!d) byDate.set(date, d = { date, waterMl: 0, workoutMin: 0, workoutKcal: 0, sleepMin: null, weightKg: null });
+    if (!d) byDate.set(date, d = { date, waterMl: 0, workoutMin: 0, workoutKcal: 0, sleepMin: null, weightKg: null, steps: null });
     return d;
   };
   for (const r of db.prepare("SELECT date, SUM(ml) AS ml FROM water_logs WHERE date BETWEEN ? AND ? GROUP BY date").all(from, to) as { date: string; ml: number }[]) {
@@ -223,6 +246,9 @@ export function trackerHistory(db: Db, from: string, to: string): TrackerHistory
   }
   for (const r of db.prepare("SELECT date, kg FROM weight_logs WHERE date BETWEEN ? AND ?").all(from, to) as WeightRow[]) {
     day(r.date).weightKg = r.kg;
+  }
+  for (const r of db.prepare("SELECT date, steps FROM steps_logs WHERE date BETWEEN ? AND ?").all(from, to) as { date: string; steps: number }[]) {
+    day(r.date).steps = r.steps;
   }
   // Fill every date so charts get a continuous axis.
   const out: TrackerHistoryDayDTO[] = [];

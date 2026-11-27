@@ -9,6 +9,9 @@ import type {
   Activity, AddWaterBody, AddWorkoutBody, SetSleepBody, SetWeightBody, SleepDTO, TrackerDayDTO, TrackerHistoryDayDTO,
   TrackerSettings, TrackerSettingsPatch, UpdateWorkoutBody, WaterEntryDTO, WeightEntryDTO, WorkoutDTO,
 } from "../../../../packages/shared/src/trackers.ts";
+import type {
+  AdherenceDayDTO, DoseBody, DoseDTO, GlucoseBody, GlucoseDTO, MedicineBody, MedicineDayDTO, MedicineDTO, VitalBody, VitalDTO, VitalKind,
+} from "../../../../packages/shared/src/health.ts";
 import { apiFetch } from "./transport.ts";
 
 export class ApiError extends Error {
@@ -111,6 +114,22 @@ export const api = {
   addWorkout: (b: AddWorkoutBody) => request<WorkoutDTO>("POST", "/workouts", b),
   updateWorkout: (id: string, b: UpdateWorkoutBody) => request<WorkoutDTO>("PATCH", `/workouts/${id}`, b),
   deleteWorkout: (id: string) => request<void>("DELETE", `/workouts/${id}`),
+  setSteps: (date: string, steps: number) => request<{ steps: number | null; goal: number; km: number; kcal: number }>("PUT", `/steps/${date}`, { steps }),
+  deleteSteps: (date: string) => request<void>("DELETE", `/steps/${date}`),
+  glucose: (from: string, to: string) => request<GlucoseDTO[]>("GET", `/glucose${q({ from, to })}`),
+  addGlucose: (b: GlucoseBody) => request<GlucoseDTO>("POST", "/glucose", b),
+  deleteGlucose: (id: string) => request<void>("DELETE", `/glucose/${id}`),
+  vitals: (kind: VitalKind, from: string, to: string) => request<VitalDTO[]>("GET", `/vitals${q({ kind, from, to })}`),
+  addVital: (b: VitalBody) => request<VitalDTO>("POST", "/vitals", b),
+  deleteVital: (id: string) => request<void>("DELETE", `/vitals/${id}`),
+  medicines: () => request<MedicineDTO[]>("GET", "/medicines"),
+  createMedicine: (b: MedicineBody) => request<MedicineDTO>("POST", "/medicines", b),
+  updateMedicine: (id: string, b: MedicineBody) => request<MedicineDTO>("PUT", `/medicines/${id}`, b),
+  deleteMedicine: (id: string) => request<void>("DELETE", `/medicines/${id}`),
+  medicineDay: (date: string) => request<MedicineDayDTO>("GET", `/medicines/day/${date}`),
+  adherence: (from: string, to: string) => request<AdherenceDayDTO[]>("GET", `/medicines/adherence${q({ from, to })}`),
+  recordDose: (b: DoseBody) => request<DoseDTO>("POST", "/medicines/doses", b),
+  deleteDose: (id: string) => request<void>("DELETE", `/medicines/doses/${id}`),
   setSleep: (date: string, b: SetSleepBody) => request<SleepDTO>("PUT", `/sleep/${date}`, b),
   deleteSleep: (date: string) => request<void>("DELETE", `/sleep/${date}`),
 

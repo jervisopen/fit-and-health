@@ -36,6 +36,16 @@
   --workout-soft: #fbe6ef;
   --sleep: #5a54c9;
   --sleep-soft: #ebeafa;
+  --steps: #b8740c;
+  --steps-soft: #fbf0dc;
+  --glucose: #8b4fc4;
+  --glucose-soft: #f1e8fa;
+  --medicine: #4f6a9a;
+  --medicine-soft: #e6ebf4;
+  --heart: #d03f4f;
+  --heart-soft: #fbe5e7;
+  --breathing: #0e8fa8;
+  --breathing-soft: #dcf2f6;
   --shadow: 0 1px 2px rgb(28 25 23 / 0.06), 0 2px 8px rgb(28 25 23 / 0.04);
   color-scheme: light;
 }
@@ -74,6 +84,16 @@
     --workout-soft: #3a1d2a;
     --sleep: #9a95f0;
     --sleep-soft: #24223f;
+    --steps: #e9b04f;
+    --steps-soft: #352914;
+    --glucose: #b98be8;
+    --glucose-soft: #2b1f3a;
+    --medicine: #9db1d6;
+    --medicine-soft: #1f2636;
+    --heart: #f07a85;
+    --heart-soft: #3a1c20;
+    --breathing: #5cc8dc;
+    --breathing-soft: #15313a;
     --shadow: none;
     color-scheme: dark;
   }
@@ -112,6 +132,16 @@
   --color-workout-soft: var(--workout-soft);
   --color-sleep: var(--sleep);
   --color-sleep-soft: var(--sleep-soft);
+  --color-steps: var(--steps);
+  --color-steps-soft: var(--steps-soft);
+  --color-glucose: var(--glucose);
+  --color-glucose-soft: var(--glucose-soft);
+  --color-medicine: var(--medicine);
+  --color-medicine-soft: var(--medicine-soft);
+  --color-heart: var(--heart);
+  --color-heart-soft: var(--heart-soft);
+  --color-breathing: var(--breathing);
+  --color-breathing-soft: var(--breathing-soft);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --shadow-card: var(--shadow);
 }

@@ -13,7 +13,7 @@ import { fromIso, parseTimeInput, timeInputValue } from "../../lib/dates.ts";
 import { useInvalidateTrackers, useSettings } from "../../lib/queries.ts";
 import { hoursMinutes } from "./meta.tsx";
 
-function useSave() {
+export function useSave() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const run = async (fn: () => Promise<unknown>) => {
@@ -308,7 +308,8 @@ export function SleepSheet({ open, onClose, day }: { open: boolean; onClose: () 
   );
 }
 
-function atMinutes(iso: string, min: number, dayOffset: number): number {
+/** Epoch ms for a local clock time on an ISO date (dayOffset −1 = the day before). */
+export function atMinutes(iso: string, min: number, dayOffset: number): number {
   const d = fromIso(iso);
   d.setDate(d.getDate() + dayOffset);
   d.setHours(Math.floor(min / 60), min % 60, 0, 0);

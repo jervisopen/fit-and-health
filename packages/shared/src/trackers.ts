@@ -1,7 +1,8 @@
 /**
- * Water, weight, workout and sleep trackers: shared rules and API types.
- * General guidance only, not medical advice.
+ * Daily trackers (water, weight, workout, steps, sleep, plus the health logs in health.ts):
+ * shared rules and API types. General guidance only, not medical advice.
  */
+import type { GlucoseDTO, GlucoseUnit, MedicineDayDTO, VitalDTO } from "./health.ts";
 
 // ── Workouts ───────────────────────────────────────────────────────────────────────────────
 /**
@@ -75,6 +76,24 @@ export function workoutNetKcal(met: number, weightKg: number, minutes: number): 
 /** Used for calorie estimates when no weight has been logged yet. */
 export const FALLBACK_WEIGHT_KG = 65;
 
+// ── Steps ─────────────────────────────────────────────────────────────────────────────────
+/** Step length is roughly 41% of height (about 0.41 for women and 0.42 for men). */
+export function strideM(heightCm: number | null, sex?: "female" | "male" | null): number {
+  if (!heightCm) return 0.7;
+  return (heightCm / 100) * (sex === "male" ? 0.415 : sex === "female" ? 0.413 : 0.414);
+}
+
+/**
+ * Distance and calories for a day's steps, treating them as walking at ~5 km/h (MET 3.5):
+ * about 0.7 kcal per kg per km in total, of which ~0.5 is above resting.
+ */
+export function stepsEnergy(steps: number, weightKg: number | null, heightCm: number | null, sex?: "female" | "male" | null) {
+  const km = (steps * strideM(heightCm, sex)) / 1000;
+  const kg = weightKg ?? FALLBACK_WEIGHT_KG;
+  const hours = km / 5;
+  return { km: Math.round(km * 100) / 100, kcal: Math.round(3.5 * kg * hours), netKcal: Math.round(2.5 * kg * hours) };
+}
+
 // ── Weight ────────────────────────────────────────────────────────────────────────────────
 /**
  * Healthy weight for a height using BMI 18.5–22.9, the normal range for Asian Indian adults
@@ -100,8 +119,8 @@ export function suggestedWaterMl(weightKg: number | null, glassMl = 250): number
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────────────────
-export type TrackerKind = "water" | "weight" | "workout" | "sleep";
-export const TRACKER_KINDS: TrackerKind[] = ["water", "weight", "workout", "sleep"];
+export type TrackerKind = "water" | "weight" | "workout" | "steps" | "sleep" | "glucose" | "medicine" | "heart" | "breathing";
+export const TRACKER_KINDS: TrackerKind[] = ["water", "weight", "workout", "steps", "sleep", "glucose", "medicine", "heart", "breathing"];
 
 export type TrackerSettings = {
   water: { enabled: boolean; goalMl: number | null; glassMl: number };
@@ -109,15 +128,27 @@ export type TrackerSettings = {
   weight: { enabled: boolean; goalKg: number | null; heightCm: number | null };
   /** WHO: at least 150 active minutes a week, i.e. about 30 minutes on 5 days. */
   workout: { enabled: boolean; goalMin: number; addToBudget: boolean };
+  /** Benefits keep growing up to roughly 8,000–10,000 steps a day for most adults. */
+  steps: { enabled: boolean; goal: number };
   /** Adults: 7–9 hours. */
   sleep: { enabled: boolean; goalMin: number };
+  glucose: { enabled: boolean; unit: GlucoseUnit };
+  medicine: { enabled: boolean };
+  heart: { enabled: boolean };
+  breathing: { enabled: boolean };
 };
 
 export const DEFAULT_TRACKER_SETTINGS: TrackerSettings = {
   water: { enabled: true, goalMl: null, glassMl: 250 },
   weight: { enabled: true, goalKg: null, heightCm: null },
   workout: { enabled: true, goalMin: 30, addToBudget: false },
+  steps: { enabled: true, goal: 8000 },
   sleep: { enabled: true, goalMin: 8 * 60 },
+  // Health logs are opt-in so the Diary stays simple for people who don't need them.
+  glucose: { enabled: false, unit: "mg/dL" },
+  medicine: { enabled: false },
+  heart: { enabled: false },
+  breathing: { enabled: false },
 };
 
 export type TrackerSettingsPatch = { [K in TrackerKind]?: Partial<TrackerSettings[K]> };
@@ -127,7 +158,12 @@ export function mergeTrackerSettings(base: TrackerSettings, patch: TrackerSettin
     water: { ...base.water, ...patch.water },
     weight: { ...base.weight, ...patch.weight },
     workout: { ...base.workout, ...patch.workout },
+    steps: { ...base.steps, ...patch.steps },
     sleep: { ...base.sleep, ...patch.sleep },
+    glucose: { ...base.glucose, ...patch.glucose },
+    medicine: { ...base.medicine, ...patch.medicine },
+    heart: { ...base.heart, ...patch.heart },
+    breathing: { ...base.breathing, ...patch.breathing },
   };
 }
 
@@ -153,7 +189,13 @@ export type TrackerDayDTO = {
     healthy: { minKg: number; maxKg: number } | null;
   };
   workout: { entries: WorkoutDTO[]; minutes: number; kcal: number; netKcal: number; goalMin: number };
+  /** Steps are typed in (a website can't read the phone's step counter). */
+  steps: { steps: number | null; goal: number; km: number; kcal: number };
   sleep: { entry: SleepDTO | null; goalMin: number };
+  glucose: { readings: GlucoseDTO[]; unit: GlucoseUnit };
+  medicine: MedicineDayDTO;
+  heart: { readings: VitalDTO[] };
+  breathing: { readings: VitalDTO[] };
 };
 
 export type TrackerHistoryDayDTO = {
@@ -163,10 +205,12 @@ export type TrackerHistoryDayDTO = {
   workoutKcal: number;
   sleepMin: number | null;
   weightKg: number | null;
+  steps: number | null;
 };
 
 export type AddWaterBody = { date: string; ml: number };
 export type SetWeightBody = { kg: number; note?: string | null };
 export type AddWorkoutBody = { date: string; activityKey: string; minutes: number; name?: string; kcal?: number; note?: string | null };
 export type UpdateWorkoutBody = { minutes?: number; kcal?: number; note?: string | null };
+export type SetStepsBody = { steps: number };
 export type SetSleepBody = { bedAt: number; wakeAt: number; quality?: number | null; note?: string | null };
